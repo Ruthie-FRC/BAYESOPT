@@ -309,7 +309,7 @@ class CoefficientTuner:
             return
         
         # Validate shot data
-        if not shot_data.is_valid():
+        if not shot_data.is_valid(self.config):
             self.consecutive_invalid_shots += 1
             logger.warning(f"Invalid shot data (consecutive: {self.consecutive_invalid_shots})")
             
@@ -393,3 +393,4 @@ class CoefficientTuner:
         step_size = self.current_optimizer.current_step_size
         
         return f"Tuning {coeff_name} (iter {iteration}, step {step_size:.6f})"
+        
