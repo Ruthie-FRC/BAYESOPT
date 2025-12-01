@@ -10,6 +10,8 @@ import threading
 import logging
 from typing import Optional, Dict
 
+import keyboard
+
 from .config import TunerConfig
 from .nt_interface import NetworkTablesInterface, ShotData
 from .optimizer import CoefficientTuner
@@ -17,6 +19,9 @@ from .logger import TunerLogger, setup_logging
 
 
 logger = logging.getLogger(__name__)
+
+# Keyboard shortcut to stop the tuner
+STOP_HOTKEY = 'ctrl+shift+x'
 
 
 class BayesianTunerCoordinator:
@@ -310,11 +315,31 @@ def run_tuner(server_ip: Optional[str] = None, config: Optional[TunerConfig] = N
     
     # Create and run tuner
     with BayesianTunerCoordinator(config) as tuner:
+        # Flag to track if the user wants to stop
+        stop_requested = threading.Event()
+        hotkey_registered = False
+        
+        def on_stop_shortcut():
+            """Callback when stop hotkey is pressed."""
+            logger.info(f"Stop shortcut ({STOP_HOTKEY}) pressed")
+            stop_requested.set()
+        
+        # Register the keyboard shortcut
         try:
-            logger.info("Tuner running. Press Ctrl+C to stop.")
+            keyboard.add_hotkey(STOP_HOTKEY, on_stop_shortcut)
+            hotkey_registered = True
+        except Exception as e:
+            logger.warning(f"Failed to register {STOP_HOTKEY} hotkey: {e}")
+            logger.info("Falling back to Ctrl+C to stop the tuner")
+        
+        try:
+            if hotkey_registered:
+                logger.info(f"Tuner running. Press {STOP_HOTKEY} to stop.")
+            else:
+                logger.info("Tuner running. Press Ctrl+C to stop.")
             
-            # Keep running until interrupted
-            while not tuner.optimizer.is_complete():
+            # Keep running until interrupted or tuning complete
+            while not tuner.optimizer.is_complete() and not stop_requested.is_set():
                 time.sleep(1.0)
                 
                 # Print periodic status
@@ -322,7 +347,10 @@ def run_tuner(server_ip: Optional[str] = None, config: Optional[TunerConfig] = N
                 if status['running']:
                     logger.info(f"Status: {status['tuning_status']}")
             
-            logger.info("Tuning complete!")
+            if stop_requested.is_set():
+                logger.info("Interrupted by user")
+            else:
+                logger.info("Tuning complete!")
             
             # Log final statistics
             for optimizer in tuner.optimizer.completed_coefficients:
@@ -331,4 +359,11 @@ def run_tuner(server_ip: Optional[str] = None, config: Optional[TunerConfig] = N
                 logger.info(f"Final stats for {stats['coefficient_name']}: {stats}")
             
         except KeyboardInterrupt:
-            logger.info("Interrupted by user")
+            logger.info("Interrupted by user (Ctrl+C)")
+        finally:
+            # Clean up the keyboard hook if it was registered
+            if hotkey_registered:
+                try:
+                    keyboard.remove_hotkey(STOP_HOTKEY)
+                except Exception:
+                    pass
