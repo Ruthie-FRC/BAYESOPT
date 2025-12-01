@@ -5,6 +5,9 @@ scikit-optimize>=0.9.0
 pynetworktables>=2021.0.0
 numpy>=1.21.0
 pandas>=1.3.0
+# Note: keyboard library may require root/admin privileges on Linux/Mac/Chromebook
+# If hotkey registration fails, the tuner will fall back to Ctrl+C
+keyboard>=0.13.5
 
 # ---------------------------------------------------------
 # Optional dependencies for enhanced functionality
