@@ -6,6 +6,43 @@ This module handles all NetworkTables communication including:
 - Writing updated coefficient values
 - Connection management and error handling
 - Status feedback to drivers
+- Dashboard controls for autotune feature (button and status display)
+- Manual coefficient adjustment from dashboard (for real-time tuning)
+- Fine-tuning mode controls (closer/farther from target center)
+
+Dashboard Controls Published:
+-----------------------------
+The tuner publishes the following to /Tuning/BayesianTuner:
+    - RunOptimization (bool): Button for manual optimization trigger
+    - AutotuneEnabled (bool): Shows current autotune mode
+    - ShotCount (int): Number of accumulated shots
+    - ShotThreshold (int): Target shots before auto-optimization
+    - TunerEnabled (bool): Toggle to enable/disable tuner at runtime
+    
+Manual Coefficient Control (at /Tuning/BayesianTuner/ManualControl/):
+    - ManualAdjustEnabled (bool): Enable manual coefficient adjustment
+    - CoefficientName (string): Which coefficient to adjust
+    - NewValue (number): New value to set
+    - ApplyManualValue (bool): Button to apply the manual value
+    
+Fine-Tuning Mode (at /Tuning/BayesianTuner/FineTuning/):
+    - FineTuningEnabled (bool): Enable fine-tuning mode
+    - TargetBias (string): "CENTER", "LEFT", "RIGHT", "UP", "DOWN"
+    - BiasAmount (number): How much to bias (0.0-1.0)
+    
+Backtrack Tuning (at /Tuning/BayesianTuner/Backtrack/):
+    - BacktrackEnabled (bool): Allow tuner to go back to previous coefficients
+    - BacktrackToCoefficient (string): Name of coefficient to backtrack to
+    - TriggerBacktrack (bool): Button to trigger backtrack
+
+When autotune_enabled = False:
+    Drivers can press the "RunOptimization" button on the dashboard
+    (displayed in Shuffleboard/SmartDashboard) to trigger coefficient
+    optimization using the accumulated shot data.
+
+When autotune_enabled = True:
+    The tuner automatically runs optimization when ShotCount reaches
+    ShotThreshold. The dashboard shows progress toward this threshold.
 """
 
 import time
@@ -14,21 +51,50 @@ from dataclasses import dataclass
 import logging
 
 try:
-    from networktables import NetworkTables
-except ImportError:
-    # Provide a mock for testing without pynetworktables
+    # Try pyntcore first (modern WPILib 2024+)
+    import ntcore
+    
     class NetworkTables:
+        """Wrapper to provide pynetworktables-like API for pyntcore."""
+        _inst = None
+        
         @staticmethod
         def initialize(server=None):
-            pass
+            NetworkTables._inst = ntcore.NetworkTableInstance.getDefault()
+            if server:
+                NetworkTables._inst.setServer(server)
+            NetworkTables._inst.startClient4("BayesOptTuner")
         
         @staticmethod
         def isConnected():
-            return False
+            if NetworkTables._inst is None:
+                return False
+            return NetworkTables._inst.isConnected()
         
         @staticmethod
         def getTable(name):
-            return None
+            if NetworkTables._inst is None:
+                return None
+            return NetworkTables._inst.getTable(name)
+    
+except ImportError:
+    try:
+        # Fall back to pynetworktables (older API)
+        from networktables import NetworkTables
+    except ImportError:
+        # Provide a mock for testing without any NetworkTables library
+        class NetworkTables:
+            @staticmethod
+            def initialize(server=None):
+                pass
+            
+            @staticmethod
+            def isConnected():
+                return False
+            
+            @staticmethod
+            def getTable(name):
+                return None
 
 
 logger = logging.getLogger(__name__)
@@ -459,3 +525,666 @@ class NetworkTablesInterface:
             logger.debug("Signaled coefficients updated")
         except Exception as e:
             logger.error(f"Error signaling coefficient update: {e}")
+    
+    def read_run_optimization_button(self) -> bool:
+        """
+        Read the "Run Optimization" button state from the dashboard.
+        
+        This is the MANUAL TRIGGER for optimization when autotune is disabled.
+        
+        How it works:
+        1. The tuner publishes a "RunOptimization" boolean to NetworkTables
+        2. This appears as a toggleable button in Shuffleboard/SmartDashboard
+        3. When the driver clicks the button, it sets the value to True
+        4. This method reads that value, and if True:
+           - Returns True to trigger optimization
+           - Resets the button to False so it doesn't trigger again
+        
+        Dashboard Location: /Tuning/BayesianTuner/RunOptimization
+        
+        Returns:
+            True if the button was pressed (also resets the button state to False)
+            False if button not pressed or not connected
+        """
+        if not self.is_connected():
+            return False
+        
+        try:
+            # Read from the BayesianTuner table where dashboard controls live
+            tuner_table = NetworkTables.getTable("/Tuning/BayesianTuner")
+            button_pressed = tuner_table.getBoolean("RunOptimization", False)
+            
+            if button_pressed:
+                # Reset the button state so it doesn't trigger again
+                # This makes it a "one-shot" button - press once, runs once
+                tuner_table.putBoolean("RunOptimization", False)
+                logger.info("Run Optimization button pressed - triggering manual optimization")
+                return True
+            
+            return False
+        except Exception as e:
+            logger.error(f"Error reading run optimization button: {e}")
+            return False
+    
+    def write_autotune_status(self, autotune_enabled: bool, shot_count: int, shot_threshold: int):
+        """
+        Write autotune status to NetworkTables for dashboard display.
+        
+        This publishes information to the dashboard so drivers can see:
+        - Whether autotune is enabled or in manual mode
+        - How many shots have been accumulated
+        - How many shots are needed before auto-optimization runs
+        
+        Also initializes the "Run Optimization" button if it doesn't exist,
+        so it appears on the dashboard for manual triggering.
+        
+        Dashboard Location: /Tuning/BayesianTuner/
+        Published Values:
+            - AutotuneEnabled (bool): Current mode
+            - ShotCount (int): Accumulated shots so far
+            - ShotThreshold (int): Target for auto-optimization
+            - RunOptimization (bool): Button for manual trigger (initialized to False)
+        
+        Args:
+            autotune_enabled: Whether autotune mode is enabled
+            shot_count: Current number of accumulated shots
+            shot_threshold: Number of shots required before auto-optimization
+        """
+        if not self.is_connected():
+            return
+        
+        try:
+            tuner_table = NetworkTables.getTable("/Tuning/BayesianTuner")
+            tuner_table.putBoolean("AutotuneEnabled", autotune_enabled)
+            tuner_table.putNumber("ShotCount", shot_count)
+            tuner_table.putNumber("ShotThreshold", shot_threshold)
+            
+            # Show/hide the RunOptimization button based on autotune mode
+            # Button should only appear when in manual mode (autotune disabled)
+            if not autotune_enabled:
+                # Initialize the button if it doesn't exist (manual mode)
+                if not tuner_table.containsKey("RunOptimization"):
+                    tuner_table.putBoolean("RunOptimization", False)
+            
+            # Initialize SkipToNextCoefficient button if it doesn't exist
+            if not tuner_table.containsKey("SkipToNextCoefficient"):
+                tuner_table.putBoolean("SkipToNextCoefficient", False)
+            
+            # ── GLOBAL Sample Size Adjustment ──
+            # Input field for new global threshold value
+            if not tuner_table.containsKey("NewGlobalThreshold"):
+                tuner_table.putNumber("NewGlobalThreshold", shot_threshold)
+            # Button to apply the new global threshold
+            if not tuner_table.containsKey("UpdateGlobalThreshold"):
+                tuner_table.putBoolean("UpdateGlobalThreshold", False)
+            
+            # ── LOCAL (per-coefficient) Sample Size Adjustment ──
+            # Input field for new local threshold value (for current coefficient only)
+            if not tuner_table.containsKey("NewLocalThreshold"):
+                tuner_table.putNumber("NewLocalThreshold", shot_threshold)
+            # Button to apply the new local threshold
+            if not tuner_table.containsKey("UpdateLocalThreshold"):
+                tuner_table.putBoolean("UpdateLocalThreshold", False)
+            
+            logger.debug(f"Autotune status: enabled={autotune_enabled}, shots={shot_count}/{shot_threshold}")
+        except Exception as e:
+            logger.error(f"Error writing autotune status: {e}")
+    
+    def read_skip_to_next_button(self) -> bool:
+        """
+        Read the "Skip to Next Coefficient" button state from the dashboard.
+        
+        When pressed, the tuner will move to tuning the next coefficient
+        in the TUNING_ORDER list, skipping the current one.
+        
+        NOTE: This button should be hidden/ignored when auto-advance is enabled
+        for the current coefficient (either via global or local setting).
+        
+        Dashboard Location: /Tuning/BayesianTuner/SkipToNextCoefficient
+        
+        Returns:
+            True if the button was pressed (also resets the button state to False)
+            False if button not pressed or not connected
+        """
+        if not self.is_connected():
+            return False
+        
+        try:
+            tuner_table = NetworkTables.getTable("/Tuning/BayesianTuner")
+            button_pressed = tuner_table.getBoolean("SkipToNextCoefficient", False)
+            
+            if button_pressed:
+                # Reset the button state so it doesn't trigger again
+                tuner_table.putBoolean("SkipToNextCoefficient", False)
+                logger.info("Skip to Next Coefficient button pressed")
+                return True
+            
+            return False
+        except Exception as e:
+            logger.error(f"Error reading skip button: {e}")
+            return False
+    
+    def read_global_threshold_update(self) -> int:
+        """
+        Read if the user wants to update the GLOBAL shot threshold at runtime.
+        
+        This changes the default threshold used by all coefficients that don't
+        have their own override.
+        
+        Dashboard provides:
+        - NewGlobalThreshold: Input field for new global value
+        - UpdateGlobalThreshold: Button to apply the new global value
+        
+        Dashboard Location: /Tuning/BayesianTuner/
+        
+        Returns:
+            The new global threshold value if update requested, -1 otherwise
+        """
+        if not self.is_connected():
+            return -1
+        
+        try:
+            tuner_table = NetworkTables.getTable("/Tuning/BayesianTuner")
+            update_pressed = tuner_table.getBoolean("UpdateGlobalThreshold", False)
+            
+            if update_pressed:
+                # Reset the button
+                tuner_table.putBoolean("UpdateGlobalThreshold", False)
+                # Get the new threshold value
+                new_threshold = int(tuner_table.getNumber("NewGlobalThreshold", 10))
+                logger.info(f"Global shot threshold update requested: {new_threshold}")
+                return new_threshold
+            
+            return -1
+        except Exception as e:
+            logger.error(f"Error reading global threshold update: {e}")
+            return -1
+    
+    def read_local_threshold_update(self) -> int:
+        """
+        Read if the user wants to update the LOCAL shot threshold at runtime.
+        
+        This changes the threshold for the CURRENT coefficient only,
+        enabling its autotune_override if not already enabled.
+        
+        Dashboard provides:
+        - NewLocalThreshold: Input field for new local value (current coeff only)
+        - UpdateLocalThreshold: Button to apply the new local value
+        
+        Dashboard Location: /Tuning/BayesianTuner/
+        
+        Returns:
+            The new local threshold value if update requested, -1 otherwise
+        """
+        if not self.is_connected():
+            return -1
+        
+        try:
+            tuner_table = NetworkTables.getTable("/Tuning/BayesianTuner")
+            update_pressed = tuner_table.getBoolean("UpdateLocalThreshold", False)
+            
+            if update_pressed:
+                # Reset the button
+                tuner_table.putBoolean("UpdateLocalThreshold", False)
+                # Get the new threshold value
+                new_threshold = int(tuner_table.getNumber("NewLocalThreshold", 10))
+                logger.info(f"Local shot threshold update requested: {new_threshold}")
+                return new_threshold
+            
+            return -1
+        except Exception as e:
+            logger.error(f"Error reading local threshold update: {e}")
+            return -1
+    
+    def write_current_coefficient_info(self, coeff_name: str, is_autotune: bool, shot_threshold: int, auto_advance: bool):
+        """
+        Write current coefficient tuning info to dashboard.
+        
+        This lets the dashboard display which coefficient is being tuned
+        and its specific settings. Also controls button visibility:
+        
+        - RunOptimization button: Only visible when is_autotune = False (manual mode)
+        - SkipToNextCoefficient button: Only visible when auto_advance = False
+        
+        Args:
+            coeff_name: Name of current coefficient being tuned
+            is_autotune: Whether this coefficient uses autotune mode (effective value)
+            shot_threshold: Shot threshold for this coefficient (effective value)
+            auto_advance: Whether auto-advance is enabled for this coefficient (effective value)
+        """
+        if not self.is_connected():
+            return
+        
+        try:
+            tuner_table = NetworkTables.getTable("/Tuning/BayesianTuner")
+            tuner_table.putString("CurrentCoefficient", coeff_name)
+            tuner_table.putBoolean("CurrentCoeffAutotune", is_autotune)
+            tuner_table.putNumber("CurrentCoeffThreshold", shot_threshold)
+            tuner_table.putBoolean("CurrentCoeffAutoAdvance", auto_advance)
+            
+            # ── RunOptimization button visibility ──
+            # Only show when this coefficient uses MANUAL mode (autotune disabled)
+            # Dashboard should check CurrentCoeffAutotune to show/hide this button
+            tuner_table.putBoolean("ShowRunOptimizationButton", not is_autotune)
+            if not is_autotune:
+                # Make sure button exists for manual mode
+                if not tuner_table.containsKey("RunOptimization"):
+                    tuner_table.putBoolean("RunOptimization", False)
+            
+            # ── SkipToNextCoefficient button visibility ──
+            # Only show when auto-advance is DISABLED for this coefficient
+            # When auto-advance is on, the tuner will automatically skip on 100% success
+            tuner_table.putBoolean("ShowSkipButton", not auto_advance)
+            if not auto_advance:
+                # Make sure button exists when manual skip is needed
+                if not tuner_table.containsKey("SkipToNextCoefficient"):
+                    tuner_table.putBoolean("SkipToNextCoefficient", False)
+            
+        except Exception as e:
+            logger.error(f"Error writing coefficient info: {e}")
+    
+    def read_tuner_enabled_toggle(self) -> tuple:
+        """
+        Read the runtime tuner enable/disable toggle from the dashboard.
+        
+        This allows drivers to enable or disable the entire BayesOpt tuner
+        at runtime via the dashboard, without needing to restart the program.
+        
+        The toggle works like a simple on/off switch - when the driver
+        changes the value on the dashboard, it takes effect immediately.
+        
+        Dashboard Location: /Tuning/BayesianTuner/TunerEnabled
+        
+        Returns:
+            Tuple of (was_changed, new_value):
+            - was_changed: True if the toggle value changed from last read
+            - new_value: The new value of the toggle (True = enabled, False = disabled)
+        """
+        if not self.is_connected():
+            return (False, True)  # Default to enabled if not connected
+        
+        try:
+            tuner_table = NetworkTables.getTable("/Tuning/BayesianTuner")
+            
+            # Read the current toggle value from dashboard
+            current_value = tuner_table.getBoolean("TunerEnabled", True)
+            
+            # Track the previous value to detect changes
+            if not hasattr(self, '_last_tuner_enabled_value'):
+                self._last_tuner_enabled_value = current_value
+                return (False, current_value)
+            
+            # Check if value changed since last read
+            if current_value != self._last_tuner_enabled_value:
+                self._last_tuner_enabled_value = current_value
+                logger.info(f"Tuner enabled toggle changed to: {current_value}")
+                return (True, current_value)
+            
+            return (False, current_value)
+        except Exception as e:
+            logger.error(f"Error reading tuner enabled toggle: {e}")
+            return (False, True)
+    
+    def write_tuner_enabled_status(self, enabled: bool, paused: bool = False):
+        """
+        Write the tuner enabled status to the dashboard.
+        
+        This publishes the current state of the tuner so drivers can see
+        whether the tuner is enabled/disabled and toggle it.
+        
+        The TunerEnabled toggle works as a direct on/off switch - when the
+        driver changes it on the dashboard, the tuner will enable/disable
+        immediately without needing to press any additional buttons.
+        
+        Dashboard Location: /Tuning/BayesianTuner/
+        Published Values:
+            - TunerEnabled (bool): Toggle to enable/disable the tuner at runtime
+            - TunerPaused (bool): Whether the tuner is paused (e.g., match mode)
+            - TunerStatus (string): Human-readable status message
+        
+        Args:
+            enabled: Whether the tuner is currently enabled
+            paused: Whether the tuner is paused (but still enabled)
+        """
+        if not self.is_connected():
+            return
+        
+        try:
+            tuner_table = NetworkTables.getTable("/Tuning/BayesianTuner")
+            
+            # Initialize TunerEnabled toggle on first write (only if it doesn't exist)
+            # This preserves user changes made on the dashboard
+            if not tuner_table.containsKey("TunerEnabled"):
+                tuner_table.putBoolean("TunerEnabled", enabled)
+            
+            tuner_table.putBoolean("TunerPaused", paused)
+            
+            # Write human-readable status for dashboard display
+            if not enabled:
+                status = "DISABLED (toggle TunerEnabled to enable)"
+            elif paused:
+                status = "PAUSED (match mode detected)"
+            else:
+                status = "ACTIVE"
+            tuner_table.putString("TunerRuntimeStatus", status)
+            
+            logger.debug(f"Tuner status: enabled={enabled}, paused={paused}")
+        except Exception as e:
+            logger.error(f"Error writing tuner enabled status: {e}")
+    
+    def initialize_manual_controls(self, coefficients: dict):
+        """
+        Initialize manual coefficient adjustment controls on the dashboard.
+        
+        This allows drivers to manually adjust any coefficient value in real-time
+        from the dashboard without waiting for optimization.
+        
+        Dashboard Location: /Tuning/BayesianTuner/ManualControl/
+        
+        Controls:
+            - ManualAdjustEnabled (bool): Enable manual adjustment mode
+            - CoefficientSelector (string): Which coefficient to adjust
+            - NewValue (number): Value to set
+            - ApplyManualValue (bool): Button to apply the change
+            - CurrentValue (number): Shows current value of selected coefficient
+            - AvailableCoefficients (string): Comma-separated list of coefficient names
+        
+        Args:
+            coefficients: Dict of coefficient names to CoefficientConfig objects
+        """
+        if not self.is_connected():
+            return
+        
+        try:
+            manual_table = NetworkTables.getTable("/Tuning/BayesianTuner/ManualControl")
+            
+            # Initialize controls if they don't exist
+            if not manual_table.containsKey("ManualAdjustEnabled"):
+                manual_table.putBoolean("ManualAdjustEnabled", False)
+            
+            # List of available coefficients for selection
+            coeff_names = ",".join(coefficients.keys())
+            manual_table.putString("AvailableCoefficients", coeff_names)
+            
+            # Initialize selector with first coefficient
+            if not manual_table.containsKey("CoefficientSelector"):
+                first_coeff = list(coefficients.keys())[0] if coefficients else ""
+                manual_table.putString("CoefficientSelector", first_coeff)
+            
+            if not manual_table.containsKey("NewValue"):
+                manual_table.putNumber("NewValue", 0.0)
+            
+            if not manual_table.containsKey("ApplyManualValue"):
+                manual_table.putBoolean("ApplyManualValue", False)
+            
+            if not manual_table.containsKey("CurrentValue"):
+                manual_table.putNumber("CurrentValue", 0.0)
+            
+            logger.info("Manual coefficient controls initialized on dashboard")
+        except Exception as e:
+            logger.error(f"Error initializing manual controls: {e}")
+    
+    def read_manual_coefficient_adjustment(self) -> tuple:
+        """
+        Read manual coefficient adjustment request from dashboard.
+        
+        Allows drivers to manually set any coefficient value in real-time.
+        
+        Dashboard Location: /Tuning/BayesianTuner/ManualControl/
+        
+        Returns:
+            Tuple of (triggered, coefficient_name, new_value):
+            - triggered: True if the apply button was pressed
+            - coefficient_name: Name of coefficient to adjust
+            - new_value: New value to set
+        """
+        if not self.is_connected():
+            return (False, "", 0.0)
+        
+        try:
+            manual_table = NetworkTables.getTable("/Tuning/BayesianTuner/ManualControl")
+            
+            # Check if adjustment is enabled
+            if not manual_table.getBoolean("ManualAdjustEnabled", False):
+                return (False, "", 0.0)
+            
+            # Check if apply button was pressed
+            apply_pressed = manual_table.getBoolean("ApplyManualValue", False)
+            
+            if apply_pressed:
+                # Reset button
+                manual_table.putBoolean("ApplyManualValue", False)
+                
+                # Get the coefficient name and new value
+                coeff_name = manual_table.getString("CoefficientSelector", "")
+                new_value = manual_table.getNumber("NewValue", 0.0)
+                
+                logger.info(f"Manual coefficient adjustment: {coeff_name} = {new_value}")
+                return (True, coeff_name, new_value)
+            
+            return (False, "", 0.0)
+        except Exception as e:
+            logger.error(f"Error reading manual adjustment: {e}")
+            return (False, "", 0.0)
+    
+    def write_manual_control_status(self, coeff_name: str, current_value: float, min_val: float, max_val: float):
+        """
+        Write current coefficient info to manual control section.
+        
+        Updates the dashboard with the current value and valid range
+        for the selected coefficient.
+        
+        Args:
+            coeff_name: Name of currently selected coefficient
+            current_value: Current value of the coefficient
+            min_val: Minimum allowed value
+            max_val: Maximum allowed value
+        """
+        if not self.is_connected():
+            return
+        
+        try:
+            manual_table = NetworkTables.getTable("/Tuning/BayesianTuner/ManualControl")
+            manual_table.putNumber("CurrentValue", current_value)
+            manual_table.putNumber("MinValue", min_val)
+            manual_table.putNumber("MaxValue", max_val)
+            manual_table.putString("SelectedCoefficient", coeff_name)
+        except Exception as e:
+            logger.error(f"Error writing manual control status: {e}")
+    
+    def initialize_fine_tuning_controls(self):
+        """
+        Initialize fine-tuning mode controls on the dashboard.
+        
+        Fine-tuning mode is used after the robot is consistently hitting the target.
+        It allows adjusting where within the target you want to hit (center, edges, etc.)
+        
+        Dashboard Location: /Tuning/BayesianTuner/FineTuning/
+        
+        Controls:
+            - FineTuningEnabled (bool): Enable fine-tuning mode
+            - TargetBias (string): "CENTER", "LEFT", "RIGHT", "UP", "DOWN"
+            - BiasAmount (number): How much to bias (0.0 = center, 1.0 = edge)
+        """
+        if not self.is_connected():
+            return
+        
+        try:
+            fine_table = NetworkTables.getTable("/Tuning/BayesianTuner/FineTuning")
+            
+            if not fine_table.containsKey("FineTuningEnabled"):
+                fine_table.putBoolean("FineTuningEnabled", False)
+            
+            if not fine_table.containsKey("TargetBias"):
+                fine_table.putString("TargetBias", "CENTER")
+            
+            if not fine_table.containsKey("BiasAmount"):
+                fine_table.putNumber("BiasAmount", 0.0)
+            
+            # Provide valid options for dashboard dropdown
+            fine_table.putString("ValidBiasOptions", "CENTER,LEFT,RIGHT,UP,DOWN")
+            
+            logger.info("Fine-tuning controls initialized on dashboard")
+        except Exception as e:
+            logger.error(f"Error initializing fine-tuning controls: {e}")
+    
+    def read_fine_tuning_settings(self) -> tuple:
+        """
+        Read fine-tuning settings from dashboard.
+        
+        Returns:
+            Tuple of (enabled, target_bias, bias_amount):
+            - enabled: Whether fine-tuning mode is active
+            - target_bias: "CENTER", "LEFT", "RIGHT", "UP", "DOWN"
+            - bias_amount: 0.0-1.0 (how much to bias)
+        """
+        if not self.is_connected():
+            return (False, "CENTER", 0.0)
+        
+        try:
+            fine_table = NetworkTables.getTable("/Tuning/BayesianTuner/FineTuning")
+            enabled = fine_table.getBoolean("FineTuningEnabled", False)
+            target_bias = fine_table.getString("TargetBias", "CENTER")
+            bias_amount = fine_table.getNumber("BiasAmount", 0.0)
+            
+            return (enabled, target_bias, bias_amount)
+        except Exception as e:
+            logger.error(f"Error reading fine-tuning settings: {e}")
+            return (False, "CENTER", 0.0)
+    
+    def initialize_backtrack_controls(self, tuning_order: list):
+        """
+        Initialize backtrack tuning controls on the dashboard.
+        
+        Backtracking allows the tuner to go back to a previously tuned
+        coefficient if inaccuracy is caused by improper earlier tuning.
+        
+        Dashboard Location: /Tuning/BayesianTuner/Backtrack/
+        
+        Controls:
+            - BacktrackEnabled (bool): Allow backtracking
+            - BacktrackToCoefficient (string): Name of coefficient to backtrack to
+            - TriggerBacktrack (bool): Button to trigger backtrack
+            - TunedCoefficients (string): Comma-separated list of already tuned coefficients
+        
+        Args:
+            tuning_order: List of coefficient names in tuning order
+        """
+        if not self.is_connected():
+            return
+        
+        try:
+            backtrack_table = NetworkTables.getTable("/Tuning/BayesianTuner/Backtrack")
+            
+            if not backtrack_table.containsKey("BacktrackEnabled"):
+                backtrack_table.putBoolean("BacktrackEnabled", False)
+            
+            if not backtrack_table.containsKey("TriggerBacktrack"):
+                backtrack_table.putBoolean("TriggerBacktrack", False)
+            
+            # Provide tuning order for reference
+            backtrack_table.putString("TuningOrder", ",".join(tuning_order))
+            
+            if not backtrack_table.containsKey("BacktrackToCoefficient"):
+                backtrack_table.putString("BacktrackToCoefficient", "")
+            
+            logger.info("Backtrack controls initialized on dashboard")
+        except Exception as e:
+            logger.error(f"Error initializing backtrack controls: {e}")
+    
+    def read_backtrack_request(self) -> tuple:
+        """
+        Read backtrack request from dashboard.
+        
+        Returns:
+            Tuple of (triggered, coefficient_name):
+            - triggered: True if backtrack button was pressed
+            - coefficient_name: Name of coefficient to backtrack to
+        """
+        if not self.is_connected():
+            return (False, "")
+        
+        try:
+            backtrack_table = NetworkTables.getTable("/Tuning/BayesianTuner/Backtrack")
+            
+            # Check if backtracking is enabled
+            if not backtrack_table.getBoolean("BacktrackEnabled", False):
+                return (False, "")
+            
+            # Check if trigger button was pressed
+            triggered = backtrack_table.getBoolean("TriggerBacktrack", False)
+            
+            if triggered:
+                # Reset button
+                backtrack_table.putBoolean("TriggerBacktrack", False)
+                
+                coeff_name = backtrack_table.getString("BacktrackToCoefficient", "")
+                logger.info(f"Backtrack requested to: {coeff_name}")
+                return (True, coeff_name)
+            
+            return (False, "")
+        except Exception as e:
+            logger.error(f"Error reading backtrack request: {e}")
+            return (False, "")
+    
+    def write_backtrack_status(self, tuned_coefficients: list, current_coefficient: str):
+        """
+        Write backtrack status to dashboard.
+        
+        Updates the dashboard with which coefficients have been tuned
+        and can be backtracked to.
+        
+        Args:
+            tuned_coefficients: List of coefficient names already tuned
+            current_coefficient: Name of currently tuning coefficient
+        """
+        if not self.is_connected():
+            return
+        
+        try:
+            backtrack_table = NetworkTables.getTable("/Tuning/BayesianTuner/Backtrack")
+            backtrack_table.putString("TunedCoefficients", ",".join(tuned_coefficients))
+            backtrack_table.putString("CurrentCoefficient", current_coefficient)
+        except Exception as e:
+            logger.error(f"Error writing backtrack status: {e}")
+    
+    def write_all_coefficient_values_to_dashboard(self, coefficient_values: dict, coefficients: dict):
+        """
+        Write ALL current coefficient values to dashboard for monitoring.
+        
+        This allows drivers to see the current operating values of all
+        coefficients at any time, comparing them to code defaults.
+        
+        Dashboard Location: /Tuning/BayesianTuner/CoefficientsLive/
+        
+        For each coefficient, publishes:
+            - {CoeffName}/CurrentValue: The current operating value
+            - {CoeffName}/CodeDefault: The default from COEFFICIENT_TUNING.py
+            - {CoeffName}/Difference: Difference between current and default
+        
+        Args:
+            coefficient_values: Dict of current coefficient values
+            coefficients: Dict of CoefficientConfig objects (for defaults)
+        """
+        if not self.is_connected():
+            return
+        
+        try:
+            live_table = NetworkTables.getTable("/Tuning/BayesianTuner/CoefficientsLive")
+            
+            for name, current_val in coefficient_values.items():
+                if name in coefficients:
+                    coeff = coefficients[name]
+                    default_val = coeff.default_value
+                    difference = current_val - default_val
+                    
+                    coeff_table = live_table.getSubTable(name)
+                    coeff_table.putNumber("CurrentValue", current_val)
+                    coeff_table.putNumber("CodeDefault", default_val)
+                    coeff_table.putNumber("Difference", difference)
+                    coeff_table.putNumber("MinValue", coeff.min_value)
+                    coeff_table.putNumber("MaxValue", coeff.max_value)
+                    coeff_table.putBoolean("Enabled", coeff.enabled)
+        except Exception as e:
+            logger.error(f"Error writing coefficient values to dashboard: {e}")
+            

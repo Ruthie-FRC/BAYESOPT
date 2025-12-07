@@ -1,8 +1,32 @@
 #!/usr/bin/env python3
 """
-Test runner for the Bayesian Tuner.
+Unit Test Runner for the Bayesian Tuner.
 
-Runs all unit tests and reports results.
+This script runs all unit tests for the BayesOpt tuner module.
+
+WHAT ARE UNIT TESTS?
+--------------------
+Unit tests are automated tests that verify small pieces of code work correctly.
+They test individual functions/classes in isolation without needing real hardware.
+
+TESTS INCLUDED:
+- test_config.py: Tests configuration loading and validation
+- test_logger.py: Tests CSV logging and coefficient history tracking
+- test_optimizer.py: Tests Bayesian optimization and coefficient tuning logic
+
+HOW TO RUN:
+-----------
+From the tuner directory:
+    python run_tests.py
+
+Or from anywhere:
+    python -m bayesopt.tuner.run_tests
+
+WHEN TO RUN:
+-----------
+- Before deploying to robot (to catch bugs early)
+- After making any code changes
+- To verify the tuner will work correctly on the robot
 """
 
 import sys
@@ -30,3 +54,4 @@ def run_tests():
 
 if __name__ == '__main__':
     sys.exit(run_tests())
+# ----------------------------------------------------------------------
