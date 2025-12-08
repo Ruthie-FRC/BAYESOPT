@@ -179,9 +179,9 @@ class NetworkTablesInterface:
         logger.info(f"Write rate limit: {config.MAX_NT_WRITE_RATE_HZ} Hz, "
                    f"Read rate limit: {config.MAX_NT_READ_RATE_HZ} Hz")
     
-    def connect(self, server_ip: Optional[str] = None) -> bool:
+    def start(self, server_ip: Optional[str] = None) -> bool:
         """
-        Connect to NetworkTables server.
+        Start NetworkTables connection.
         
         Args:
             server_ip: IP address of robot/server. If None, uses config default.
@@ -228,6 +228,20 @@ class NetworkTablesInterface:
             self.connected = False
             return False
     
+    def connect(self, server_ip: Optional[str] = None) -> bool:
+        """
+        Connect to NetworkTables server.
+        
+        Deprecated: Use start() instead for API consistency.
+        
+        Args:
+            server_ip: IP address of robot/server. If None, uses config default.
+        
+        Returns:
+            True if connected successfully, False otherwise
+        """
+        return self.start(server_ip)
+    
     def is_connected(self) -> bool:
         """Check if connected to NetworkTables."""
         try:
@@ -238,14 +252,22 @@ class NetworkTablesInterface:
         
         return self.connected
     
-    def disconnect(self):
-        """Disconnect from NetworkTables."""
+    def stop(self):
+        """Stop NetworkTables connection."""
         try:
-            # NetworkTables doesn't have an explicit disconnect in pynetworktables
+            # NetworkTables doesn't have an explicit stop in pynetworktables
             self.connected = False
-            logger.info("Disconnected from NetworkTables")
+            logger.info("Stopped NetworkTables connection")
         except Exception as e:
-            logger.error(f"Error during disconnect: {e}")
+            logger.error(f"Error during stop: {e}")
+    
+    def disconnect(self):
+        """
+        Disconnect from NetworkTables.
+        
+        Deprecated: Use stop() instead for API consistency.
+        """
+        self.stop()
     
     def read_coefficient(self, nt_key: str, default_value: float) -> float:
         """
