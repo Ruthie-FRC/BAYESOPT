@@ -5,14 +5,24 @@ This module implements Bayesian optimization using scikit-optimize to tune
 shooting coefficients based on hit/miss feedback with adaptive step sizes.
 """
 
+import importlib
 import logging
 from typing import List, Tuple, Optional, Dict
 import numpy as np
 
 try:
-    from skopt import Optimizer
-    from skopt.space import Real, Integer
+    skopt_module = importlib.import_module("scikit_optimize")
 except ImportError:
+    try:
+        skopt_module = importlib.import_module("skopt")
+    except ImportError:
+        skopt_module = None
+
+if skopt_module:
+    Optimizer = skopt_module.Optimizer
+    Real = skopt_module.space.Real
+    Integer = skopt_module.space.Integer
+else:
     # Provide mock for testing without scikit-optimize
     class Optimizer:
         def __init__(self, *args, **kwargs):
@@ -371,6 +381,34 @@ class CoefficientTuner:
             self.current_index += 1
             self._start_next_coefficient()
     
+    def advance_to_next_coefficient(self):
+        """
+        Manually advance to the next coefficient in the tuning order.
+        
+        This is called when:
+        - User presses the "Skip to Next Coefficient" button
+        - Auto-advance triggers after 100% success rate
+        
+        Skips current coefficient without requiring convergence.
+        """
+        if self.is_complete():
+            logger.info("Already at end of tuning sequence")
+            return
+        
+        if self.current_optimizer:
+            coeff_name = self.current_optimizer.coeff_config.name
+            logger.info(f"Manually advancing from {coeff_name} to next coefficient")
+            
+            # Optionally save current optimizer to completed list
+            self.completed_coefficients.append(self.current_optimizer)
+        
+        # Clear pending shots
+        self.pending_shots = []
+        
+        # Move to next
+        self.current_index += 1
+        self._start_next_coefficient()
+    
     def is_complete(self) -> bool:
         """Check if all coefficients have been tuned."""
         return self.current_optimizer is None and self.current_index >= len(self.coefficients)
@@ -393,4 +431,3 @@ class CoefficientTuner:
         step_size = self.current_optimizer.current_step_size
         
         return f"Tuning {coeff_name} (iter {iteration}, step {step_size:.6f})"
-        

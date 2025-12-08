@@ -54,6 +54,8 @@ class TestTunerConfig(unittest.TestCase):
         """Test default configuration."""
         config = TunerConfig()
         
+        # Tuner is disabled by default for safety - must be explicitly enabled
+        self.assertFalse(config.TUNER_ENABLED)
         # TUNER_ENABLED is set in TUNER_TOGGLES.ini (currently False by default)
         self.assertIsInstance(config.TUNER_ENABLED, bool)
         self.assertGreater(len(config.COEFFICIENTS), 0)

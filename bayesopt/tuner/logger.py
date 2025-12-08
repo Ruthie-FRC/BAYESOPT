@@ -3,10 +3,14 @@ Data logging module for the Bayesian Tuner.
 
 This module handles logging of all tuning data to CSV files for offline analysis.
 Logs shot data, coefficient values, step sizes, and NT connection status.
+
+Also logs coefficient combinations with timestamps to track what values were
+used together and when they were last modified.
 """
 
 import os
 import csv
+import json
 import logging
 from datetime import datetime
 from typing import Dict, Optional
@@ -231,6 +235,127 @@ class TunerLogger:
         """
         return self.csv_file
     
+    def log_coefficient_combination(self, coefficient_values: Dict[str, float], event: str = "SNAPSHOT"):
+        """
+        Log the current combination of coefficient values with timestamp.
+        
+        This creates a separate JSON log file that tracks what coefficient
+        combinations were used and when. Useful for:
+        - Tracking which combinations worked best
+        - Reproducing successful tuning sessions
+        - Understanding coefficient interactions
+        
+        Log File: tuner_logs/coefficient_history_{date}.json
+        
+        Args:
+            coefficient_values: Dict mapping coefficient names to values
+            event: Type of event ("SNAPSHOT", "OPTIMIZATION", "MANUAL_CHANGE", "BACKTRACK")
+        """
+        try:
+            # Create coefficient history file
+            history_file = self.log_directory / f"coefficient_history_{self.session_start_time.strftime('%Y%m%d')}.json"
+            
+            # Load existing history or create new
+            history = []
+            if history_file.exists():
+                try:
+                    with open(history_file, 'r') as f:
+                        history = json.load(f)
+                except json.JSONDecodeError:
+                    history = []
+            
+            # Add new entry (use single timestamp for consistency)
+            current_time = datetime.now()
+            entry = {
+                "timestamp": current_time.isoformat(),
+                "session_id": self.session_start_time.isoformat(),
+                "event": event,
+                "coefficients": coefficient_values,
+                "session_time_seconds": (current_time - self.session_start_time).total_seconds()
+            }
+            history.append(entry)
+            
+            # Write back
+            with open(history_file, 'w') as f:
+                json.dump(history, f, indent=2)
+            
+            logger.debug(f"Logged coefficient combination: {event}")
+        except Exception as e:
+            logger.error(f"Error logging coefficient combination: {e}")
+    
+    def log_coefficient_interaction(self, coeff1: str, coeff2: str, interaction_type: str, notes: str = ""):
+        """
+        Log detected interaction between two coefficients.
+        
+        When the tuner detects that changing one coefficient affects another,
+        this method logs that interaction for later analysis.
+        
+        Log File: tuner_logs/coefficient_interactions_{date}.json
+        
+        Args:
+            coeff1: First coefficient name
+            coeff2: Second coefficient name
+            interaction_type: Type of interaction ("POSITIVE", "NEGATIVE", "NEUTRAL")
+            notes: Optional notes about the interaction
+        """
+        try:
+            interaction_file = self.log_directory / f"coefficient_interactions_{self.session_start_time.strftime('%Y%m%d')}.json"
+            
+            # Load existing or create new
+            interactions = []
+            if interaction_file.exists():
+                try:
+                    with open(interaction_file, 'r') as f:
+                        interactions = json.load(f)
+                except json.JSONDecodeError:
+                    interactions = []
+            
+            # Add new interaction (use single timestamp for consistency)
+            current_time = datetime.now()
+            entry = {
+                "timestamp": current_time.isoformat(),
+                "coefficient_1": coeff1,
+                "coefficient_2": coeff2,
+                "interaction_type": interaction_type,
+                "notes": notes
+            }
+            interactions.append(entry)
+            
+            # Write back
+            with open(interaction_file, 'w') as f:
+                json.dump(interactions, f, indent=2)
+            
+            logger.info(f"Logged coefficient interaction: {coeff1} <-> {coeff2} ({interaction_type})")
+        except Exception as e:
+            logger.error(f"Error logging coefficient interaction: {e}")
+    
+    def get_last_used_coefficients(self) -> Optional[Dict[str, float]]:
+        """
+        Get the last used coefficient values from history.
+        
+        Useful for resuming tuning from where you left off.
+        
+        Returns:
+            Dict of coefficient values or None if no history
+        """
+        try:
+            # Find most recent history file
+            history_files = sorted(self.log_directory.glob("coefficient_history_*.json"), reverse=True)
+            
+            if not history_files:
+                return None
+            
+            with open(history_files[0], 'r') as f:
+                history = json.load(f)
+            
+            if history:
+                return history[-1].get("coefficients", None)
+            
+            return None
+        except Exception as e:
+            logger.error(f"Error reading coefficient history: {e}")
+            return None
+    
     def __enter__(self):
         """Context manager entry."""
         return self
@@ -266,3 +391,4 @@ def setup_logging(config, log_level=logging.INFO):
         root_logger.addHandler(console_handler)
     
     logger.info("Logging configured")
+    return logger

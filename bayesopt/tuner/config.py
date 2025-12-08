@@ -2,10 +2,25 @@
 Configuration module for the FRC Shooter Bayesian Tuner.
 
 This module loads configuration from two simple files:
-1. TUNER_TOGGLES.ini - Three main on/off switches
+1. TUNER_TOGGLES.ini - Main on/off switches and autotune settings
 2. COEFFICIENT_TUNING.py - What to tune, how much, in what order
 
 NO NEED TO EDIT THIS FILE - edit the files above instead!
+
+Configuration Options Loaded:
+-----------------------------
+From TUNER_TOGGLES.ini:
+    - TUNER_ENABLED: Master switch to enable/disable the tuner
+    - AUTOTUNE_ENABLED: Toggle between automatic and manual optimization
+    - AUTOTUNE_SHOT_THRESHOLD: Number of shots before auto-optimization runs
+    - REQUIRE_SHOT_LOGGED: Shooting interlock setting
+    - REQUIRE_COEFFICIENTS_UPDATED: Coefficient interlock setting
+    - Team number (for robot IP calculation)
+
+From COEFFICIENT_TUNING.py:
+    - COEFFICIENTS: Dictionary of tunable coefficients with their bounds
+    - TUNING_ORDER: Order in which coefficients are optimized
+    - Optimization parameters (N_INITIAL_POINTS, N_CALLS_PER_COEFFICIENT, etc.)
 """
 
 from dataclasses import dataclass
@@ -17,7 +32,25 @@ import importlib.util
 
 @dataclass
 class CoefficientConfig:
-    """Configuration for a single tunable coefficient."""
+    """
+    Configuration for a single tunable coefficient.
+    
+    Attributes:
+        name: Human-readable name of the coefficient (e.g., "kDragCoefficient")
+        default_value: Starting value for optimization
+        min_value: Minimum allowed value (safety limit)
+        max_value: Maximum allowed value (safety limit)
+        initial_step_size: How much to change the value in early iterations
+        step_decay_rate: How quickly to reduce step size (0.9 = shrink 10% per iteration)
+        is_integer: If True, round values to whole numbers
+        enabled: If True, this coefficient will be tuned
+        nt_key: NetworkTables key path for reading/writing this coefficient
+        autotune_override: If True, use per-coefficient autotune settings instead of global
+        autotune_enabled: Per-coefficient autotune toggle (only used if override=True)
+        autotune_shot_threshold: Per-coefficient sample size (only used if override=True)
+        auto_advance_override: If True, use per-coefficient auto-advance setting instead of global
+        auto_advance_on_success: Per-coefficient auto-advance on 100% success (only used if override=True)
+    """
     
     name: str
     default_value: float
@@ -28,22 +61,115 @@ class CoefficientConfig:
     is_integer: bool
     enabled: bool
     nt_key: str  # NetworkTables key path
+    # Per-coefficient autotune settings
+    autotune_override: bool = False  # If True, use custom settings below instead of global
+    autotune_enabled: bool = False   # Custom autotune toggle (only used if override=True)
+    autotune_shot_threshold: int = 10  # Custom sample size (only used if override=True)
+    # Per-coefficient auto-advance settings
+    auto_advance_override: bool = False  # If True, use custom settings below instead of global
+    auto_advance_on_success: bool = False  # Auto-advance on 100% success (only used if override=True)
+    auto_advance_shot_threshold: int = 10  # Custom threshold for auto-advance (only used if override=True)
     
     def clamp(self, value: float) -> float:
-        """Clamp value to valid range."""
+        """
+        Clamp value to valid range and optionally round to integer.
+        
+        Args:
+            value: The value to clamp
+            
+        Returns:
+            Value clamped to [min_value, max_value], rounded if is_integer=True
+        """
         clamped = max(self.min_value, min(self.max_value, value))
         if self.is_integer:
             clamped = round(clamped)
         return clamped
+    
+    def get_effective_autotune_settings(self, global_enabled: bool, global_threshold: int, force_global: bool = False) -> tuple:
+        """
+        Get the effective autotune settings for this coefficient.
+        
+        Priority: force_global > local override > global default
+        
+        Args:
+            global_enabled: Global autotune_enabled from TUNER_TOGGLES.ini
+            global_threshold: Global autotune_shot_threshold from TUNER_TOGGLES.ini
+            force_global: If True, ignores local override and uses global settings
+            
+        Returns:
+            Tuple of (autotune_enabled, autotune_shot_threshold) to use for this coefficient
+        """
+        if force_global:
+            # Force global: ignore all local overrides
+            return (global_enabled, global_threshold)
+        elif self.autotune_override:
+            # Local override takes precedence over global default
+            return (self.autotune_enabled, self.autotune_shot_threshold)
+        else:
+            # Use global default
+            return (global_enabled, global_threshold)
+    
+    def get_effective_auto_advance_settings(self, global_auto_advance: bool, global_threshold: int, force_global: bool = False) -> tuple:
+        """
+        Get the effective auto-advance settings for this coefficient.
+        
+        Priority: force_global > local override > global default
+        
+        Args:
+            global_auto_advance: Global auto_advance_on_success from TUNER_TOGGLES.ini
+            global_threshold: Global auto_advance_shot_threshold from TUNER_TOGGLES.ini
+            force_global: If True, ignores local override and uses global settings
+            
+        Returns:
+            Tuple of (auto_advance_enabled, auto_advance_shot_threshold) to use for this coefficient
+        """
+        if force_global:
+            # Force global: ignore all local overrides
+            return (global_auto_advance, global_threshold)
+        elif self.auto_advance_override:
+            # Local override takes precedence over global default
+            return (self.auto_advance_on_success, self.auto_advance_shot_threshold)
+        else:
+            # Use global default
+            return (global_auto_advance, global_threshold)
+    
+    def get_effective_auto_advance(self, global_auto_advance: bool, force_global: bool = False) -> bool:
+        """
+        Get the effective auto-advance enabled setting for this coefficient.
+        
+        Priority: force_global > local override > global default
+        
+        Args:
+            global_auto_advance: Global auto_advance_on_success from TUNER_TOGGLES.ini
+            force_global: If True, ignores local override and uses global settings
+            
+        Returns:
+            Whether to auto-advance on 100% success for this coefficient
+        """
+        if force_global:
+            return global_auto_advance
+        elif self.auto_advance_override:
+            return self.auto_advance_on_success
+        else:
+            return global_auto_advance
 
 
 class TunerConfig:
     """
     Global configuration for the Bayesian tuner system.
     
-    Loads settings from:
-    - TUNER_TOGGLES.ini (main on/off switches)
-    - COEFFICIENT_TUNING.py (coefficient definitions and tuning order)
+    This class loads and manages all tuner settings. It reads from two files:
+    - TUNER_TOGGLES.ini: Main toggles including autotune mode
+    - COEFFICIENT_TUNING.py: Coefficient definitions and optimization settings
+    
+    Key Attributes:
+        TUNER_ENABLED (bool): Master switch - if False, tuner does nothing
+        AUTOTUNE_ENABLED (bool): If True, auto-optimize after threshold shots;
+                                  if False, wait for dashboard button press
+        AUTOTUNE_SHOT_THRESHOLD (int): Number of shots to collect before 
+                                        automatic optimization (sample size)
+        COEFFICIENTS (dict): Map of coefficient names to CoefficientConfig objects
+        TUNING_ORDER (list): Order in which to optimize coefficients
     """
     
     def __init__(self):
@@ -58,7 +184,21 @@ class TunerConfig:
         self._initialize_constants()
     
     def _load_toggles(self):
-        """Load the three main toggles from TUNER_TOGGLES.ini"""
+        """
+        Load the main toggles from TUNER_TOGGLES.ini.
+        
+        This loads:
+        - TUNER_ENABLED: Master on/off switch
+        - AUTOTUNE_ENABLED: Automatic vs manual optimization mode
+        - AUTOTUNE_SHOT_THRESHOLD: Sample size for automatic mode
+        - AUTOTUNE_FORCE_GLOBAL: When True, ignores local overrides
+        - AUTO_ADVANCE_ON_SUCCESS: Auto-advance on 100% success
+        - AUTO_ADVANCE_SHOT_THRESHOLD: Sample size for auto-advance
+        - AUTO_ADVANCE_FORCE_GLOBAL: When True, ignores local overrides
+        - REQUIRE_SHOT_LOGGED: Shooting interlock
+        - REQUIRE_COEFFICIENTS_UPDATED: Coefficient interlock
+        - NT_SERVER_IP: Calculated from team number
+        """
         # Find the toggles file (in ../config/ relative to tuner module)
         module_dir = os.path.dirname(os.path.abspath(__file__))
         parent_dir = os.path.dirname(module_dir)
@@ -67,12 +207,26 @@ class TunerConfig:
         config = configparser.ConfigParser()
         config.read(toggles_file)
         
-        # Load main controls
+        # ── Master Switch ──
         self.TUNER_ENABLED = config.getboolean('main_controls', 'tuner_enabled', fallback=True)
+        
+        # ── Autotune Settings ──
+        self.AUTOTUNE_ENABLED = config.getboolean('main_controls', 'autotune_enabled', fallback=False)
+        self.AUTOTUNE_SHOT_THRESHOLD = config.getint('main_controls', 'autotune_shot_threshold', fallback=10)
+        # FORCE_GLOBAL: When True, ignores ALL local coefficient overrides for autotune
+        self.AUTOTUNE_FORCE_GLOBAL = config.getboolean('main_controls', 'autotune_force_global', fallback=False)
+        
+        # ── Auto-Advance Settings ──
+        self.AUTO_ADVANCE_ON_SUCCESS = config.getboolean('main_controls', 'auto_advance_on_success', fallback=False)
+        self.AUTO_ADVANCE_SHOT_THRESHOLD = config.getint('main_controls', 'auto_advance_shot_threshold', fallback=10)
+        # FORCE_GLOBAL: When True, ignores ALL local coefficient overrides for auto-advance
+        self.AUTO_ADVANCE_FORCE_GLOBAL = config.getboolean('main_controls', 'auto_advance_force_global', fallback=False)
+        
+        # ── Shooting Interlocks ──
         self.REQUIRE_SHOT_LOGGED = config.getboolean('main_controls', 'require_shot_logged', fallback=False)
         self.REQUIRE_COEFFICIENTS_UPDATED = config.getboolean('main_controls', 'require_coefficients_updated', fallback=False)
         
-        # Load team number and calculate robot IP
+        # ── Team/Network Configuration ──
         team_number = config.getint('team', 'team_number', fallback=5892)
         self.NT_SERVER_IP = f"10.{team_number // 100}.{team_number % 100}.2"
     
@@ -104,6 +258,14 @@ class TunerConfig:
                 is_integer=cfg['is_integer'],
                 enabled=cfg['enabled'],
                 nt_key=cfg['nt_key'],
+                # Per-coefficient autotune settings (default to global if not specified)
+                autotune_override=cfg.get('autotune_override', False),
+                autotune_enabled=cfg.get('autotune_enabled', False),
+                autotune_shot_threshold=cfg.get('autotune_shot_threshold', 10),
+                # Per-coefficient auto-advance settings
+                auto_advance_override=cfg.get('auto_advance_override', False),
+                auto_advance_on_success=cfg.get('auto_advance_on_success', False),
+                auto_advance_shot_threshold=cfg.get('auto_advance_shot_threshold', 10),
             )
         
         # Load optimization settings
@@ -224,4 +386,4 @@ class TunerConfig:
             warnings.append("TUNER_UPDATE_RATE_HZ must be positive")
         
         return warnings
-    
+
