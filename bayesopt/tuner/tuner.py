@@ -819,6 +819,26 @@ class BayesianTunerCoordinator:
             
             logger.info(f"Backtrack complete, now tuning: {self.optimizer.get_current_coefficient_name()}")
     
+    def get_accumulated_shots_count(self) -> int:
+        """
+        Get the number of accumulated shots waiting to be processed.
+        
+        Returns:
+            Number of accumulated shots
+        """
+        return len(self.accumulated_shots)
+    
+    def get_current_autotune_settings(self) -> tuple:
+        """
+        Get the effective autotune settings for the current coefficient.
+        
+        This is a public accessor for the internal _get_current_autotune_settings method.
+        
+        Returns:
+            Tuple of (autotune_enabled, shot_threshold) for current coefficient
+        """
+        return self._get_current_autotune_settings()
+    
     def get_status(self) -> Dict:
         """
         Get current tuner status.
@@ -928,3 +948,4 @@ def run_tuner(server_ip: Optional[str] = None, config: Optional[TunerConfig] = N
                     keyboard.remove_hotkey(STOP_HOTKEY)
                 except Exception:
                     pass
+                    
