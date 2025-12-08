@@ -107,10 +107,10 @@ class BayesianTunerCoordinator:
         logger.info("Starting Bayesian Tuner...")
         self.data_logger.log_event('START', 'Tuner starting')
         
-        # Connect to NetworkTables
-        if not self.nt_interface.connect(server_ip):
-            logger.error("Failed to connect to NetworkTables, tuner not started")
-            self.data_logger.log_event('ERROR', 'Failed to connect to NT')
+        # Start NetworkTables connection
+        if not self.nt_interface.start(server_ip):
+            logger.error("Failed to start NetworkTables, tuner not started")
+            self.data_logger.log_event('ERROR', 'Failed to start NT')
             return
         
         # Read initial coefficient values
@@ -178,8 +178,8 @@ class BayesianTunerCoordinator:
             if self.thread.is_alive():
                 logger.warning("Tuner thread did not stop gracefully")
         
-        # Disconnect from NT
-        self.nt_interface.disconnect()
+        # Stop NetworkTables connection
+        self.nt_interface.stop()
         
         # Close logger
         self.data_logger.close()
@@ -948,4 +948,4 @@ def run_tuner(server_ip: Optional[str] = None, config: Optional[TunerConfig] = N
                     keyboard.remove_hotkey(STOP_HOTKEY)
                 except Exception:
                     pass
-                    
+
