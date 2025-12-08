@@ -392,7 +392,7 @@ class NetworkTablesInterface:
                 distance=distance,
                 angle=angle,
                 velocity=velocity,
-                timestamp=current_timestamp,
+                timestamp=shot_timestamp,
                 yaw=yaw,
                 target_height=target_height,
                 launch_height=launch_height,
