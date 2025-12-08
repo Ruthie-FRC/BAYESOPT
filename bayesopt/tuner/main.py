@@ -25,8 +25,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from bayesopt.tuner.config import TunerConfig
-from bayesopt.tuner.tuner import BayesianTuner
-from bayesopt.tuner.logger import TunerLogger
+from bayesopt.tuner.tuner import BayesianTunerCoordinator
 
 
 def print_banner():
@@ -64,35 +63,26 @@ def main():
     print("Loading configuration...")
     try:
         config = TunerConfig()
-        print(f"  ✓ Loaded {len(config.coefficients)} coefficients")
-        print(f"  ✓ Tuning order: {config.tuning_order}")
+        print(f"  ✓ Loaded {len(config.COEFFICIENTS)} coefficients")
+        print(f"  ✓ Tuning order: {config.TUNING_ORDER}")
     except Exception as e:
         print(f"  ✗ ERROR loading configuration: {e}")
         print("  Check that TUNER_TOGGLES.ini and COEFFICIENT_TUNING.py exist")
         input("\nPress Enter to exit...")
         return 1
     
-    # Initialize logger
-    print("\nInitializing logger...")
-    try:
-        logger = TunerLogger(config)
-        print(f"  ✓ Logs will be saved to: {logger.log_directory}")
-    except Exception as e:
-        print(f"  ✗ ERROR initializing logger: {e}")
-        input("\nPress Enter to exit...")
-        return 1
-    
     # Initialize tuner
     print("\nInitializing tuner...")
     try:
-        tuner = BayesianTuner(config, logger)
+        tuner = BayesianTunerCoordinator(config)
         print("  ✓ Tuner initialized")
+        print(f"  ✓ Logs will be saved to: {tuner.data_logger.log_directory}")
     except Exception as e:
         print(f"  ✗ ERROR initializing tuner: {e}")
         input("\nPress Enter to exit...")
         return 1
     
-    # Connect to NetworkTables
+    # Connect to NetworkTables and start tuner
     print("\nConnecting to robot via NetworkTables...")
     print("  Make sure:")
     print("  1. Robot is powered on")
@@ -101,10 +91,14 @@ def main():
     print()
     
     try:
-        tuner.connect()
-        print("  ✓ Connected to NetworkTables!")
+        tuner.start()
+        if tuner.nt_interface.is_connected():
+            print("  ✓ Connected to NetworkTables!")
+        else:
+            print("  ⚠ Connection pending...")
+            print("  Will keep trying to connect...")
     except Exception as e:
-        print(f"  ✗ ERROR connecting: {e}")
+        print(f"  ✗ ERROR starting tuner: {e}")
         print("  Will keep trying to connect...")
     
     # Print dashboard info
@@ -121,26 +115,18 @@ def main():
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
     
-    # Main loop
+    # Main loop - just wait for shutdown since tuner runs in its own thread
     print("Tuner is running! Press Ctrl+C to stop.")
     print("=" * 75)
     print()
     
     try:
         while running:
-            try:
-                tuner.update()
-                time.sleep(0.02)  # 50Hz update rate
-            except KeyboardInterrupt:
-                break
-            except Exception as e:
-                print(f"Error in main loop: {e}")
-                time.sleep(1)  # Wait before retrying
+            time.sleep(1)
     finally:
         print("\nSaving logs and cleaning up...")
         try:
-            logger.save_all()
-            tuner.disconnect()
+            tuner.stop()
             print("  ✓ Cleanup complete")
         except Exception as e:
             print(f"  ✗ Error during cleanup: {e}")
