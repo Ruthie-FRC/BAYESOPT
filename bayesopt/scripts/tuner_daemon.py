@@ -21,7 +21,7 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 bayesopt_dir = os.path.dirname(script_dir)
 sys.path.insert(0, bayesopt_dir)
 
-from tuner import BayesianTunerCoordinator, TunerConfig, setup_logging
+from bayesopt.tuner import BayesianTunerCoordinator, TunerConfig, setup_logging
 import logging
 
 
