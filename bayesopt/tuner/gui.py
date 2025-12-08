@@ -22,8 +22,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from bayesopt.tuner.config import TunerConfig
-from bayesopt.tuner.tuner import BayesianTuner
-from bayesopt.tuner.logger import TunerLogger
+from bayesopt.tuner.tuner import BayesianTunerCoordinator
 
 
 class TunerGUI:
@@ -53,7 +52,6 @@ class TunerGUI:
         
         # State
         self.tuner = None
-        self.logger = None
         self.config = None
         self.running = False
         self.connected = False
@@ -226,24 +224,16 @@ class TunerGUI:
         
         try:
             self.config = TunerConfig()
-            self._log(f"  ✓ Loaded {len(self.config.coefficients)} coefficients", "success")
-            self._log(f"  ✓ Tuning order: {self.config.tuning_order}", "success")
+            self._log(f"  ✓ Loaded {len(self.config.COEFFICIENTS)} coefficients", "success")
+            self._log(f"  ✓ Tuning order: {self.config.TUNING_ORDER}", "success")
         except Exception as e:
             self._log(f"  ✗ ERROR loading configuration: {e}", "error")
             messagebox.showerror("Configuration Error", f"Failed to load configuration:\n{e}")
             return
         
-        self._log("Initializing logger...", "info")
-        try:
-            self.logger = TunerLogger(self.config)
-            self._log(f"  ✓ Logs saved to: {self.logger.log_directory}", "success")
-        except Exception as e:
-            self._log(f"  ✗ ERROR initializing logger: {e}", "error")
-            return
-        
         self._log("Initializing tuner...", "info")
         try:
-            self.tuner = BayesianTuner(self.config, self.logger)
+            self.tuner = BayesianTunerCoordinator(self.config)
             self._log("  ✓ Tuner initialized", "success")
         except Exception as e:
             self._log(f"  ✗ ERROR initializing tuner: {e}", "error")
@@ -257,13 +247,21 @@ class TunerGUI:
         self._log("  3. Robot code is running", "info")
         
         try:
-            self.tuner.connect()
-            self.connected = True
-            self.connection_label.configure(text="Connected", foreground="green")
-            self._log("  ✓ Connected to NetworkTables!", "success")
+            self.tuner.start()
+            self.connected = self.tuner.nt_interface.is_connected()
+            if self.connected:
+                self.connection_label.configure(text="Connected", foreground="green")
+                self._log("  ✓ Connected to NetworkTables!", "success")
+            else:
+                self._log("  ⚠ Connection pending...", "warning")
+                self._log("  Will keep trying to connect...", "info")
         except Exception as e:
             self._log(f"  ⚠ Connection pending: {e}", "warning")
             self._log("  Will keep trying to connect...", "info")
+        
+        # Get log directory from coordinator's logger
+        log_dir = self.tuner.data_logger.log_directory
+        self._log(f"  ✓ Logs will be saved to: {log_dir}", "success")
         
         self._log("", "info")
         self._log("Dashboard Controls at /Tuning/BayesianTuner/:", "info")
@@ -294,19 +292,12 @@ class TunerGUI:
         self._log("Stopping tuner...", "info")
         self.running = False
         
-        if self.logger:
-            try:
-                self.logger.save_all()
-                self._log("  ✓ Logs saved", "success")
-            except Exception as e:
-                self._log(f"  ✗ Error saving logs: {e}", "error")
-        
         if self.tuner:
             try:
-                self.tuner.disconnect()
-                self._log("  ✓ Disconnected from NetworkTables", "success")
+                self.tuner.stop()
+                self._log("  ✓ Tuner stopped and logs saved", "success")
             except Exception as e:
-                self._log(f"  ✗ Error disconnecting: {e}", "error")
+                self._log(f"  ✗ Error stopping tuner: {e}", "error")
         
         self.connected = False
         self.connection_label.configure(text="Disconnected", foreground="red")
@@ -321,11 +312,15 @@ class TunerGUI:
     
     def _update_loop(self):
         """Background thread that runs the tuner update loop."""
+        # BayesianTunerCoordinator runs its own thread, so we just keep the GUI alive
+        # and check if we need to update connection status
         while self.running:
             try:
-                if self.tuner:
-                    self.tuner.update()
-                time.sleep(0.02)  # 50Hz update rate
+                if self.tuner and self.tuner.nt_interface:
+                    # The tuner is running its own thread internally
+                    # We just sleep here to keep the GUI thread responsive
+                    pass
+                time.sleep(0.5)
             except Exception as e:
                 self._log(f"Error in update loop: {e}", "error")
                 time.sleep(1)
@@ -338,13 +333,15 @@ class TunerGUI:
         if self.tuner:
             try:
                 # Update current coefficient
-                current_coeff = getattr(self.tuner, 'current_coefficient', None)
+                current_coeff = self.tuner.optimizer.get_current_coefficient_name()
                 if current_coeff:
                     self.coeff_label.configure(text=current_coeff)
+                else:
+                    self.coeff_label.configure(text="--")
                 
-                # Update shot count
-                shots = len(getattr(self.tuner, 'accumulated_shots', []))
-                threshold = getattr(self.tuner, 'current_threshold', 10)
+                # Update shot count using public methods
+                shots = self.tuner.get_accumulated_shots_count()
+                autotune, threshold = self.tuner.get_current_autotune_settings()
                 self.shots_label.configure(text=f"{shots} / {threshold}")
                 
                 # Update progress bar
@@ -352,11 +349,10 @@ class TunerGUI:
                 self.progress_bar['value'] = min(progress, 100)
                 
                 # Update mode
-                autotune = getattr(self.tuner, 'autotune_enabled', False)
                 self.mode_label.configure(text="Autotune" if autotune else "Manual")
                 
                 # Update connection status
-                connected = getattr(self.tuner, 'is_connected', False)
+                connected = self.tuner.nt_interface.is_connected()
                 if connected != self.connected:
                     self.connected = connected
                     if connected:
