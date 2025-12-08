@@ -275,7 +275,7 @@ class CoefficientTuner:
 
 ```python
 class NetworkTablesInterface:
-    def connect(self, server_address):
+    def start(self, server_address):
         NetworkTables.initialize(server=server_address)
         # Wait for connection...
     
@@ -584,7 +584,7 @@ def log_shot(self, shot_data):
 
 ```python
 class MyCustomInterface:
-    def connect(self, address):
+    def start(self, address):
         # Your connection logic
         pass
     
@@ -684,3 +684,4 @@ If you're an educator or researcher interested in adapting this for your work:
 - **Troubleshooting:** [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
 - **Scikit-optimize docs:** [scikit-optimize.github.io](https://scikit-optimize.github.io/)
 - **NetworkTables:** [robotpy.readthedocs.io](https://robotpy.readthedocs.io/)
+- 
