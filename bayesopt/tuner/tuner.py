@@ -40,11 +40,13 @@ logger = logging.getLogger(__name__)
 # Stop the tuner gracefully (Fallback: Ctrl+C)
 STOP_HOTKEY = 'ctrl+shift+x'
 
-# Trigger optimization/tuning run (No fallback - requires dashboard or hotkey)
+# Trigger optimization/tuning run (Fallback: dashboard 'RunOptimization' button)
 RUN_OPTIMIZATION_HOTKEY = 'ctrl+shift+r'
 
-# Navigate through coefficient tuning order (No fallback - requires dashboard or hotkey)
+# Advance to next coefficient (Fallback: dashboard 'SkipToNextCoefficient' button)
 NEXT_COEFFICIENT_HOTKEY = 'ctrl+shift+right'
+
+# Go back to previous coefficient (No fallback - use Backtrack feature as alternative)
 PREV_COEFFICIENT_HOTKEY = 'ctrl+shift+left'
 
 
@@ -539,7 +541,8 @@ class BayesianTunerCoordinator:
         self.accumulated_shots = []
         
         # Tell the optimizer to move to the previous coefficient
-        self.optimizer.go_to_previous_coefficient()
+        if self.optimizer.current_optimizer:
+            self.optimizer.go_to_previous_coefficient()
         
         logger.info(f"Now tuning: {self.optimizer.get_current_coefficient_name()}")
     
@@ -947,6 +950,10 @@ def run_tuner(server_ip: Optional[str] = None, config: Optional[TunerConfig] = N
         # ══════════════════════════════════════════════════════════════════
         # HOTKEY CALLBACKS
         # ══════════════════════════════════════════════════════════════════
+        # NOTE: These callbacks are executed in the keyboard library's thread.
+        # The tuner.running check provides basic coordination with the main
+        # tuning thread. Python's GIL protects individual list/dict operations,
+        # and this follows the same pattern as existing dashboard button handlers.
         
         def on_stop_shortcut():
             """Callback when stop hotkey is pressed."""
@@ -995,7 +1002,7 @@ def run_tuner(server_ip: Optional[str] = None, config: Optional[TunerConfig] = N
                 logger.warning(f"Failed to register {STOP_HOTKEY} hotkey: {e}")
                 logger.info("Falling back to Ctrl+C to stop the tuner")
             
-            # Run optimization hotkey (no fallback - use dashboard button)
+            # Run optimization hotkey (Fallback: dashboard 'RunOptimization' button)
             try:
                 keyboard.add_hotkey(RUN_OPTIMIZATION_HOTKEY, on_run_optimization)
                 registered_hotkeys['run_optimization'] = True
@@ -1003,7 +1010,7 @@ def run_tuner(server_ip: Optional[str] = None, config: Optional[TunerConfig] = N
                 logger.warning(f"Failed to register {RUN_OPTIMIZATION_HOTKEY} hotkey: {e}")
                 logger.info("Use dashboard 'RunOptimization' button instead")
             
-            # Next coefficient hotkey (no fallback - use dashboard button)
+            # Next coefficient hotkey (Fallback: dashboard 'SkipToNextCoefficient' button)
             try:
                 keyboard.add_hotkey(NEXT_COEFFICIENT_HOTKEY, on_next_coefficient)
                 registered_hotkeys['next_coefficient'] = True
@@ -1011,13 +1018,13 @@ def run_tuner(server_ip: Optional[str] = None, config: Optional[TunerConfig] = N
                 logger.warning(f"Failed to register {NEXT_COEFFICIENT_HOTKEY} hotkey: {e}")
                 logger.info("Use dashboard 'SkipToNextCoefficient' button instead")
             
-            # Previous coefficient hotkey (no fallback - no button alternative)
+            # Previous coefficient hotkey (No fallback - use Backtrack feature as alternative)
             try:
                 keyboard.add_hotkey(PREV_COEFFICIENT_HOTKEY, on_prev_coefficient)
                 registered_hotkeys['prev_coefficient'] = True
             except Exception as e:
                 logger.warning(f"Failed to register {PREV_COEFFICIENT_HOTKEY} hotkey: {e}")
-                logger.info("No alternative available for going to previous coefficient")
+                logger.info("Use dashboard Backtrack feature as alternative")
         
         # ══════════════════════════════════════════════════════════════════
         # DISPLAY AVAILABLE HOTKEYS
@@ -1073,27 +1080,16 @@ def run_tuner(server_ip: Optional[str] = None, config: Optional[TunerConfig] = N
             # CLEANUP REGISTERED HOTKEYS
             # ══════════════════════════════════════════════════════════════
             if KEYBOARD_AVAILABLE:
-                if registered_hotkeys['stop']:
-                    try:
-                        keyboard.remove_hotkey(STOP_HOTKEY)
-                    except Exception:
-                        pass
-                
-                if registered_hotkeys['run_optimization']:
-                    try:
-                        keyboard.remove_hotkey(RUN_OPTIMIZATION_HOTKEY)
-                    except Exception:
-                        pass
-                
-                if registered_hotkeys['next_coefficient']:
-                    try:
-                        keyboard.remove_hotkey(NEXT_COEFFICIENT_HOTKEY)
-                    except Exception:
-                        pass
-                
-                if registered_hotkeys['prev_coefficient']:
-                    try:
-                        keyboard.remove_hotkey(PREV_COEFFICIENT_HOTKEY)
-                    except Exception:
-                        pass
-
+                # Cleanup all registered hotkeys
+                for hotkey_name, hotkey_string in [
+                    ('stop', STOP_HOTKEY),
+                    ('run_optimization', RUN_OPTIMIZATION_HOTKEY),
+                    ('next_coefficient', NEXT_COEFFICIENT_HOTKEY),
+                    ('prev_coefficient', PREV_COEFFICIENT_HOTKEY)
+                ]:
+                    if registered_hotkeys[hotkey_name]:
+                        try:
+                            keyboard.remove_hotkey(hotkey_string)
+                        except Exception:
+                            # Best-effort cleanup: ignore errors if hotkey was not registered or already removed
+                            pass
