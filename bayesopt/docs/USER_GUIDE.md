@@ -7,6 +7,7 @@ Complete guide to using the BayesOpt tuner system.
 - [Getting Started](#getting-started)
 - [Basic Operation](#basic-operation)
 - [Configuration](#configuration)
+- [Keyboard Hotkeys](#keyboard-hotkeys)
 - [Dashboard Controls](#dashboard-controls)
 - [Features](#features)
 - [Usage Modes](#usage-modes)
@@ -152,6 +153,28 @@ Is force_global = True?
             YES → Use LOCAL settings
             NO → Use GLOBAL settings
 ```
+
+## Keyboard Hotkeys
+
+The tuner provides keyboard shortcuts for quick access to common functions. See [HOTKEYS.md](HOTKEYS.md) for complete documentation.
+
+### Quick Reference
+
+| Hotkey | Function | Fallback |
+|--------|----------|----------|
+| `Ctrl+Shift+X` | Stop tuner | `Ctrl+C` |
+| `Ctrl+Shift+R` | Run optimization | Dashboard: `RunOptimization` |
+| `Ctrl+Shift+Right` | Next coefficient | Dashboard: `SkipToNextCoefficient` |
+| `Ctrl+Shift+Left` | Previous coefficient | Use Backtrack feature |
+
+**Note:** Hotkeys may require elevated permissions on Linux/Mac. If hotkeys don't work, use the fallback options listed above.
+
+**Platform Issues:**
+- **Windows:** Hotkeys work without issues
+- **Linux/Mac:** May require `sudo` or accessibility permissions
+- **ChromeOS:** Hotkey support is limited, use dashboard buttons
+
+For detailed information on troubleshooting hotkey issues, see [HOTKEYS.md](HOTKEYS.md).
 
 ## Dashboard Controls
 

@@ -388,6 +388,7 @@ class CoefficientTuner:
         This is called when:
         - User presses the "Skip to Next Coefficient" button
         - Auto-advance triggers after 100% success rate
+        - User presses Ctrl+Shift+Right hotkey
         
         Skips current coefficient without requiring convergence.
         """
@@ -407,6 +408,36 @@ class CoefficientTuner:
         
         # Move to next
         self.current_index += 1
+        self._start_next_coefficient()
+    
+    def go_to_previous_coefficient(self):
+        """
+        Go back to the previous coefficient in the tuning order.
+        
+        This is called when:
+        - User presses Ctrl+Shift+Left hotkey
+        - User wants to re-tune a coefficient
+        
+        Returns to previous coefficient for re-tuning.
+        
+        Note: When going back, the previous coefficient is restarted from scratch.
+        Any previous optimization data for that coefficient is discarded, and a
+        new optimizer instance is created. This allows complete re-tuning if the
+        coefficient needs adjustment.
+        """
+        if self.current_index <= 0:
+            logger.info("Already at beginning of tuning sequence")
+            return
+        
+        if self.current_optimizer:
+            coeff_name = self.current_optimizer.coeff_config.name
+            logger.info(f"Going back from {coeff_name} to previous coefficient")
+        
+        # Clear pending shots
+        self.pending_shots = []
+        
+        # Move to previous
+        self.current_index -= 1
         self._start_next_coefficient()
     
     def is_complete(self) -> bool:

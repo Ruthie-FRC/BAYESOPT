@@ -233,8 +233,66 @@ class TestCoefficientTuner(unittest.TestCase):
         
         self.assertIsInstance(status, str)
         self.assertGreater(len(status), 0)
+    
+    def test_go_to_previous_coefficient(self):
+        """Test going back to previous coefficient."""
+        # Start at first coefficient
+        initial_index = self.tuner.current_index
+        self.assertEqual(initial_index, 0)
+        
+        # Advance to next coefficient
+        self.tuner.advance_to_next_coefficient()
+        self.assertEqual(self.tuner.current_index, 1)
+        
+        # Go back to previous
+        self.tuner.go_to_previous_coefficient()
+        self.assertEqual(self.tuner.current_index, 0)
+        
+        # Should have a current optimizer
+        self.assertIsNotNone(self.tuner.current_optimizer)
+        
+        # Pending shots should be cleared
+        self.assertEqual(len(self.tuner.pending_shots), 0)
+    
+    def test_go_to_previous_at_beginning(self):
+        """Test that going to previous at beginning doesn't go below 0."""
+        # Start at first coefficient
+        self.assertEqual(self.tuner.current_index, 0)
+        
+        # Try to go back (should stay at 0)
+        self.tuner.go_to_previous_coefficient()
+        self.assertEqual(self.tuner.current_index, 0)
+        
+        # Should still have a current optimizer
+        self.assertIsNotNone(self.tuner.current_optimizer)
+    
+    def test_go_to_previous_clears_pending_shots(self):
+        """Test that going to previous clears pending shots."""
+        # Add some pending shots
+        shot_data = ShotData(
+            hit=True,
+            distance=5.0,
+            angle=0.5,
+            velocity=15.0,
+            timestamp=1234567890.0
+        )
+        coefficient_values = {
+            coeff.name: coeff.default_value
+            for coeff in self.config.COEFFICIENTS.values()
+        }
+        self.tuner.record_shot(shot_data, coefficient_values)
+        
+        # Verify we have pending shots
+        self.assertGreater(len(self.tuner.pending_shots), 0)
+        
+        # Advance then go back
+        self.tuner.advance_to_next_coefficient()
+        self.tuner.go_to_previous_coefficient()
+        
+        # Pending shots should be cleared
+        self.assertEqual(len(self.tuner.pending_shots), 0)
 
 
 if __name__ == '__main__':
     unittest.main()
-    
+
