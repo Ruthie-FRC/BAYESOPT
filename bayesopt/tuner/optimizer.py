@@ -462,4 +462,3 @@ class CoefficientTuner:
         step_size = self.current_optimizer.current_step_size
         
         return f"Tuning {coeff_name} (iter {iteration}, step {step_size:.6f})"
-        
