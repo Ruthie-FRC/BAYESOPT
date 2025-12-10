@@ -89,6 +89,12 @@ Once running, the GUI window shows:
 - Press `SkipToNextCoefficient` to advance (in manual mode)
 - Use `ManualControl/` to adjust coefficients manually
 
+**Or use keyboard hotkeys** (see [HOTKEYS.md](bayesopt/docs/HOTKEYS.md)):
+- `Ctrl+Shift+X` - Stop tuner
+- `Ctrl+Shift+R` - Run optimization
+- `Ctrl+Shift+Right` - Next coefficient
+- `Ctrl+Shift+Left` - Previous coefficient
+
 ### Configuration
 
 Edit these files to customize behavior:
@@ -120,6 +126,7 @@ auto_advance_shot_threshold = 10
 |----------|----------------|
 | **[SETUP.md](bayesopt/docs/SETUP.md)** | Detailed setup instructions for all platforms |
 | **[USER_GUIDE.md](bayesopt/docs/USER_GUIDE.md)** | Complete feature guide, dashboard controls, configuration |
+| **[HOTKEYS.md](bayesopt/docs/HOTKEYS.md)** | Keyboard shortcuts reference and troubleshooting |
 | **[JAVA_INTEGRATION.md](bayesopt/docs/JAVA_INTEGRATION.md)** | **REQUIRED:** How to integrate with your robot code |
 | **[TROUBLESHOOTING.md](bayesopt/docs/TROUBLESHOOTING.md)** | Common problems and solutions |
 | **[DEVELOPER_GUIDE.md](bayesopt/docs/DEVELOPER_GUIDE.md)** | Architecture, code structure, development info |
