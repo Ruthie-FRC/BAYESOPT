@@ -179,4 +179,3 @@ To add a new hotkey:
 - [User Guide](USER_GUIDE.md) - General usage instructions
 - [Dashboard Controls](USER_GUIDE.md#dashboard-controls) - Alternative to hotkeys
 - [Troubleshooting](TROUBLESHOOTING.md) - Common issues and solutions
-  
