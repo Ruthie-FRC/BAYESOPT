@@ -122,23 +122,26 @@ auto_advance_shot_threshold = 10
 
 ## Documentation
 
-### 📚 Complete Guides
+### 📚 Complete Documentation
+
+**[Full Documentation Index](bayesopt/docs/README.md)** - Complete guide to all documentation
+
+### Quick Links
 
 | Document | When to Use It |
 |----------|----------------|
 | **[SETUP.md](bayesopt/docs/SETUP.md)** | Detailed setup instructions for all platforms |
 | **[USER_GUIDE.md](bayesopt/docs/USER_GUIDE.md)** | Complete feature guide, dashboard controls, configuration |
-| **[HOTKEYS.md](bayesopt/docs/HOTKEYS.md)** | Keyboard shortcuts reference and troubleshooting |
 | **[JAVA_INTEGRATION.md](bayesopt/docs/JAVA_INTEGRATION.md)** | **REQUIRED:** How to integrate with your robot code |
 | **[TROUBLESHOOTING.md](bayesopt/docs/TROUBLESHOOTING.md)** | Common problems and solutions |
+| **[HOTKEYS.md](bayesopt/docs/HOTKEYS.md)** | Keyboard shortcuts reference |
 | **[DEVELOPER_GUIDE.md](bayesopt/docs/DEVELOPER_GUIDE.md)** | Architecture, code structure, development info |
+| **[CONTRIBUTING.md](bayesopt/docs/CONTRIBUTING.md)** | How to contribute to the project |
 
-### 📂 Quick References
+### Additional Resources
 
 - **Java integration files:** See `java-integration/` folder and [README](java-integration/README.md)
-- **Configuration examples:** See `bayesopt/config/` folder
 - **Test suite documentation:** See [README_TESTS.md](bayesopt/tuner/tests/README_TESTS.md)
-- **Contributing:** See [CONTRIBUTING.md](bayesopt/docs/CONTRIBUTING.md)
 - **Documentation standards:** See [DOCUMENTATION_STANDARDS.md](bayesopt/docs/DOCUMENTATION_STANDARDS.md)
 
 ## Key Features
