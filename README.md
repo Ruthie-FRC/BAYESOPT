@@ -2,7 +2,7 @@
 
 A comprehensive tuning system using Bayesian optimization to automatically tune shooting coefficients on FRC robots.
 
-## 📖 Table of Contents
+## Table of Contents
 
 - [Overview](#overview)
 - [Quick Setup](#quick-setup)
