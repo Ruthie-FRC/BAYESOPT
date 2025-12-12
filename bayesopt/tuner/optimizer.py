@@ -94,6 +94,10 @@ class BayesianOptimizer:
         self.best_score = float('-inf')
         self.evaluation_history = []
         
+        # Performance optimization: Cache convergence metrics to avoid recalculation
+        self._last_variance_check_len = 0
+        self._cached_variance = float('inf')
+        
         logger.info(f"Initialized optimizer for {coeff_config.name}")
     
     def suggest_next_value(self) -> float:
@@ -195,14 +199,18 @@ class BayesianOptimizer:
             return True
         
         # Check if we have enough history to evaluate convergence
-        if len(self.evaluation_history) >= 5:
-            # Check variance in recent scores
-            recent_scores = [h['score'] for h in self.evaluation_history[-5:]]
-            variance = np.var(recent_scores)
+        history_len = len(self.evaluation_history)
+        if history_len >= 5:
+            # Performance optimization: Cache variance calculation to avoid redundant computation
+            # Only recalculate if new data has been added since last check
+            if history_len != self._last_variance_check_len:
+                recent_scores = [h['score'] for h in self.evaluation_history[-5:]]
+                self._cached_variance = np.var(recent_scores)
+                self._last_variance_check_len = history_len
             
             # If variance is very low, we've converged
-            if variance < 0.01:
-                logger.info(f"{self.coeff_config.name} converged (low variance: {variance:.6f})")
+            if self._cached_variance < 0.01:
+                logger.info(f"{self.coeff_config.name} converged (low variance: {self._cached_variance:.6f})")
                 return True
         
         return False

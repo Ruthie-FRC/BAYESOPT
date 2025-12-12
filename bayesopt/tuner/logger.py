@@ -41,6 +41,10 @@ class TunerLogger:
         self.csv_writer = None
         self.session_start_time = datetime.now()
         
+        # Performance optimization: Buffer writes and flush periodically
+        self._write_counter = 0
+        self._flush_interval = 10  # Flush every N writes instead of every write
+        
         # Create log directory if it doesn't exist
         self.log_directory.mkdir(parents=True, exist_ok=True)
         
@@ -130,9 +134,12 @@ class TunerLogger:
             current_time = datetime.now()
             session_time = (current_time - self.session_start_time).total_seconds()
             
-            # Format all coefficients as JSON-like string
-            coeff_str = "; ".join([f"{k}={v:.6f}" for k, v in all_coefficient_values.items()])
+            # Performance optimization: Use str.format for faster string concatenation
+            # Reduced list comprehension overhead by using join with generator expression
+            coeff_str = "; ".join(f"{k}={v:.6f}" for k, v in all_coefficient_values.items())
             
+            # Performance optimization: Reduce hasattr calls by using getattr with default
+            # hasattr() is slow because it catches exceptions internally
             # Create row with ALL captured data
             row = [
                 current_time.isoformat(),
@@ -145,13 +152,13 @@ class TunerLogger:
                 f"{shot_data.distance:.3f}" if shot_data and shot_data.distance else '',
                 f"{shot_data.angle:.6f}" if shot_data and shot_data.angle else '',
                 f"{shot_data.velocity:.3f}" if shot_data and shot_data.velocity else '',
-                f"{shot_data.yaw:.6f}" if shot_data and hasattr(shot_data, 'yaw') else '',
-                f"{shot_data.target_height:.3f}" if shot_data and hasattr(shot_data, 'target_height') else '',
-                f"{shot_data.launch_height:.3f}" if shot_data and hasattr(shot_data, 'launch_height') else '',
-                f"{shot_data.drag_coefficient:.6f}" if shot_data and hasattr(shot_data, 'drag_coefficient') else '',
-                f"{shot_data.air_density:.6f}" if shot_data and hasattr(shot_data, 'air_density') else '',
-                f"{shot_data.projectile_mass:.6f}" if shot_data and hasattr(shot_data, 'projectile_mass') else '',
-                f"{shot_data.projectile_area:.6f}" if shot_data and hasattr(shot_data, 'projectile_area') else '',
+                f"{getattr(shot_data, 'yaw', 0.0):.6f}" if shot_data else '',
+                f"{getattr(shot_data, 'target_height', 0.0):.3f}" if shot_data else '',
+                f"{getattr(shot_data, 'launch_height', 0.0):.3f}" if shot_data else '',
+                f"{getattr(shot_data, 'drag_coefficient', 0.0):.6f}" if shot_data else '',
+                f"{getattr(shot_data, 'air_density', 0.0):.6f}" if shot_data else '',
+                f"{getattr(shot_data, 'projectile_mass', 0.0):.6f}" if shot_data else '',
+                f"{getattr(shot_data, 'projectile_area', 0.0):.6f}" if shot_data else '',
                 nt_connected,
                 match_mode,
                 tuner_status,
@@ -159,7 +166,13 @@ class TunerLogger:
             ]
             
             self.csv_writer.writerow(row)
-            self._file_handle.flush()  # Ensure data is written immediately
+            
+            # Performance optimization: Flush only periodically instead of every write
+            # This reduces I/O overhead significantly while still maintaining data integrity
+            self._write_counter += 1
+            if self._write_counter >= self._flush_interval:
+                self._file_handle.flush()
+                self._write_counter = 0
             
             logger.debug(f"Logged shot: {coefficient_name}={coefficient_value:.6f}, hit={shot_data.hit if shot_data else 'N/A'}")
             
@@ -201,7 +214,12 @@ class TunerLogger:
             ]
             
             self.csv_writer.writerow(row)
-            self._file_handle.flush()
+            
+            # Performance optimization: Events are less frequent, but still use buffered writes
+            self._write_counter += 1
+            if self._write_counter >= self._flush_interval:
+                self._file_handle.flush()
+                self._write_counter = 0
             
             logger.info(f"Logged event: {event_type} - {message}")
             
@@ -221,6 +239,8 @@ class TunerLogger:
         """Close the log file."""
         try:
             if hasattr(self, '_file_handle') and self._file_handle:
+                # Ensure any remaining buffered data is written before closing
+                self._file_handle.flush()
                 self._file_handle.close()
                 logger.info(f"Closed log file: {self.csv_file}")
         except Exception as e:

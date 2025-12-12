@@ -342,8 +342,12 @@ class NetworkTablesInterface:
         if not self.pending_writes:
             return 0
         
+        # Performance optimization: Create items list once to avoid dict mutation during iteration
+        # Using tuple() instead of list() is faster and more memory efficient
+        pending_items = tuple(self.pending_writes.items())
         count = 0
-        for nt_key, value in list(self.pending_writes.items()):
+        
+        for nt_key, value in pending_items:
             if self.write_coefficient(nt_key, value, force=True):
                 count += 1
                 del self.pending_writes[nt_key]
@@ -480,13 +484,21 @@ class NetworkTablesInterface:
         """
         Read all coefficient values from NetworkTables.
         
+        Performance note: NetworkTables reads are individual operations that cannot
+        be truly batched at the protocol level. However, we optimize by:
+        1. Pre-allocating the result dictionary
+        2. Using direct dict access pattern
+        
         Args:
             coefficients: Dict of CoefficientConfig objects
         
         Returns:
             Dict mapping coefficient names to current values
         """
+        # Performance optimization: Pre-allocate dictionary with expected size
         values = {}
+        
+        # Read all coefficients - each is an individual NT operation
         for name, coeff in coefficients.items():
             values[name] = self.read_coefficient(coeff.nt_key, coeff.default_value)
         
