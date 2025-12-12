@@ -361,14 +361,6 @@ When asking for help, include:
 - **GitHub Repository:** [Ruthie-FRC/BAYESOPT](https://github.com/Ruthie-FRC/BAYESOPT)
 - **Issues:** Use GitHub Issues for bug reports and feature requests
 
-## See Also
-
-- **Setup Guide:** [SETUP.md](SETUP.md) - Installation and setup instructions
-- **User Guide:** [USER_GUIDE.md](USER_GUIDE.md) - Complete feature documentation
-- **Java Integration:** [JAVA_INTEGRATION.md](JAVA_INTEGRATION.md) - Robot code integration
-- **Developer Guide:** [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) - Architecture and development info
-- **Hotkeys:** [HOTKEYS.md](HOTKEYS.md) - Keyboard shortcuts reference
-
 ## Diagnostic Commands
 
 ### Check Python Installation
@@ -452,3 +444,11 @@ If you've checked everything above and still have issues:
    - Open GitHub issue with details
    - Include all diagnostic information
    - Describe expected vs actual behavior
+
+## See Also
+
+- **Setup Guide:** [SETUP.md](SETUP.md) - Installation and setup instructions
+- **User Guide:** [USER_GUIDE.md](USER_GUIDE.md) - Complete feature documentation
+- **Java Integration:** [JAVA_INTEGRATION.md](JAVA_INTEGRATION.md) - Robot code integration
+- **Developer Guide:** [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) - Architecture and development info
+- **Hotkeys:** [HOTKEYS.md](HOTKEYS.md) - Keyboard shortcuts reference

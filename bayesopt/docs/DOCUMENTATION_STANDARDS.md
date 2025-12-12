@@ -626,7 +626,7 @@ more stuff...
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 1.0.0 | 2024-12-12 | Initial documentation standards |
+| 1.0.0 | 2025-12-12 | Initial documentation standards |
 
 ## Contributing to Documentation
 
