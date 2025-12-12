@@ -1,5 +1,7 @@
 # BayesOpt Tuner Test Suite Documentation
 
+//TODO: update test suits and the issue with test suits, then update this repo
+
 ## Overview
 
 This directory contains a comprehensive, professional-grade test suite for the Bayesian Optimization Tuner system. The suite includes **116 unit tests** covering all core functionality with extensive edge case testing.
@@ -398,3 +400,11 @@ When adding new functionality:
 ## License
 
 Same as parent project.
+
+## See Also
+
+- **Developer Guide:** [../../docs/DEVELOPER_GUIDE.md](../../docs/DEVELOPER_GUIDE.md) - Architecture and development info
+- **Contributing Guide:** [../../docs/CONTRIBUTING.md](../../docs/CONTRIBUTING.md) - How to contribute
+- **Documentation Standards:** [../../docs/DOCUMENTATION_STANDARDS.md](../../docs/DOCUMENTATION_STANDARDS.md) - Documentation conventions
+- **Main README:** [../../../README.md](../../../README.md) - Project overview
+  
