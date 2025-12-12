@@ -352,9 +352,9 @@ class BayesianTunerCoordinator:
         """
         logger.info(f"Accumulating shot: hit={shot_data.hit}, distance={shot_data.distance:.2f}m")
         
-        # Performance optimization: Use dict() constructor instead of .copy() for shallow copy
-        # dict() constructor is marginally faster than .copy() for small dictionaries
-        # We need to copy so changes don't affect stored data
+        # Performance note: Using dict() constructor for shallow copy
+        # Both dict() and .copy() have similar performance, but dict() is more explicit
+        # about creating a new dictionary. We need to copy so changes don't affect stored data.
         self.accumulated_shots.append({
             'shot_data': shot_data,
             'coefficient_values': dict(self.current_coefficient_values)

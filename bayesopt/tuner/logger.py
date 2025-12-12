@@ -238,10 +238,12 @@ class TunerLogger:
     def close(self):
         """Close the log file."""
         try:
-            if hasattr(self, '_file_handle') and self._file_handle:
+            # Performance optimization: Use getattr with default instead of hasattr
+            file_handle = getattr(self, '_file_handle', None)
+            if file_handle:
                 # Ensure any remaining buffered data is written before closing
-                self._file_handle.flush()
-                self._file_handle.close()
+                file_handle.flush()
+                file_handle.close()
                 logger.info(f"Closed log file: {self.csv_file}")
         except Exception as e:
             logger.error(f"Error closing log file: {e}")

@@ -342,8 +342,9 @@ class NetworkTablesInterface:
         if not self.pending_writes:
             return 0
         
-        # Performance optimization: Create items list once to avoid dict mutation during iteration
-        # Using tuple() instead of list() is faster and more memory efficient
+        # Performance optimization: Create snapshot of items before iteration
+        # tuple() is faster and more memory efficient than list() for this use case
+        # We need a snapshot because we delete items during iteration
         pending_items = tuple(self.pending_writes.items())
         count = 0
         
