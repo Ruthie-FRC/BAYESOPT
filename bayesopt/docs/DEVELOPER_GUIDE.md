@@ -676,12 +676,16 @@ If you're an educator or researcher interested in adapting this for your work:
 - Check CPU usage
 - Review log retention
 
-## Additional Resources
+## See Also
 
-- **User Documentation:** [USER_GUIDE.md](USER_GUIDE.md)
-- **Setup:** [SETUP.md](SETUP.md)
-- **Java Integration:** [JAVA_INTEGRATION.md](JAVA_INTEGRATION.md)
-- **Troubleshooting:** [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
+### Project Documentation
+- **User Guide:** [USER_GUIDE.md](USER_GUIDE.md) - Complete user documentation
+- **Setup:** [SETUP.md](SETUP.md) - Installation instructions
+- **Java Integration:** [JAVA_INTEGRATION.md](JAVA_INTEGRATION.md) - Robot code integration
+- **Troubleshooting:** [TROUBLESHOOTING.md](TROUBLESHOOTING.md) - Common issues and solutions
+- **Contributing:** [CONTRIBUTING.md](CONTRIBUTING.md) - How to contribute
+- **Documentation Standards:** [DOCUMENTATION_STANDARDS.md](DOCUMENTATION_STANDARDS.md) - Documentation conventions
+
+### External Resources
 - **Scikit-optimize docs:** [scikit-optimize.github.io](https://scikit-optimize.github.io/)
 - **NetworkTables:** [robotpy.readthedocs.io](https://robotpy.readthedocs.io/)
-- 

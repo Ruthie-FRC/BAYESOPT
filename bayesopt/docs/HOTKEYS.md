@@ -176,6 +176,8 @@ To add a new hotkey:
 
 ## See Also
 
-- [User Guide](USER_GUIDE.md) - General usage instructions
-- [Dashboard Controls](USER_GUIDE.md#dashboard-controls) - Alternative to hotkeys
-- [Troubleshooting](TROUBLESHOOTING.md) - Common issues and solutions
+- **User Guide:** [USER_GUIDE.md](USER_GUIDE.md) - General usage instructions
+- **Dashboard Controls:** [USER_GUIDE.md#dashboard-controls](USER_GUIDE.md#dashboard-controls) - Alternative to hotkeys
+- **Troubleshooting:** [TROUBLESHOOTING.md](TROUBLESHOOTING.md) - Common issues and solutions
+- **Setup:** [SETUP.md](SETUP.md) - Installation instructions
+  

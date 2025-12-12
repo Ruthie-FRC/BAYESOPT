@@ -65,7 +65,7 @@ python run_tests.py
 ```
 All tests should pass ✅
 
-Note: if laptop is not running nt some tests will fail. Working on making a seperate test suite for that.
+**Note:** If laptop is not running NetworkTables, some tests will fail. Working on making a separate test suite for that.
 
 ## How to Run
 
@@ -122,22 +122,27 @@ auto_advance_shot_threshold = 10
 
 ## Documentation
 
-### 📚 Complete Guides
+### 📚 Complete Documentation
 
-| Document | When to use it |
+**[Full Documentation Index](bayesopt/docs/README.md)** - Complete guide to all documentation
+
+### Quick Links
+
+| Document | When to Use It |
 |----------|----------------|
 | **[SETUP.md](bayesopt/docs/SETUP.md)** | Detailed setup instructions for all platforms |
 | **[USER_GUIDE.md](bayesopt/docs/USER_GUIDE.md)** | Complete feature guide, dashboard controls, configuration |
-| **[HOTKEYS.md](bayesopt/docs/HOTKEYS.md)** | Keyboard shortcuts reference and troubleshooting |
 | **[JAVA_INTEGRATION.md](bayesopt/docs/JAVA_INTEGRATION.md)** | **REQUIRED:** How to integrate with your robot code |
 | **[TROUBLESHOOTING.md](bayesopt/docs/TROUBLESHOOTING.md)** | Common problems and solutions |
+| **[HOTKEYS.md](bayesopt/docs/HOTKEYS.md)** | Keyboard shortcuts reference |
 | **[DEVELOPER_GUIDE.md](bayesopt/docs/DEVELOPER_GUIDE.md)** | Architecture, code structure, development info |
+| **[CONTRIBUTING.md](bayesopt/docs/CONTRIBUTING.md)** | How to contribute to the project |
 
-### 📂 Quick References
+### Additional Resources
 
-- **Java integration files:** See `java-integration/` folder
-- **Configuration examples:** See `bayesopt/config/` folder
-- **Contributing:** See [CONTRIBUTING.md](bayesopt/docs/CONTRIBUTING.md)
+- **Java integration files:** See `java-integration/` folder and [README](java-integration/README.md)
+- **Test suite documentation:** See [README_TESTS.md](bayesopt/tuner/tests/README_TESTS.md)
+- **Documentation standards:** See [DOCUMENTATION_STANDARDS.md](bayesopt/docs/DOCUMENTATION_STANDARDS.md)
 
 ## Key Features
 
@@ -183,5 +188,5 @@ pip install -r bayesopt/tuner/requirements.txt
 
 See [LICENSE](LICENSE) file for details.
 
-Some stuff is from advantagekit, if not attributed to them it is liscensed to @Ruthie-FRC
-Liscenising is still in progress 
+Some components are from AdvantageKit. If not attributed to them, code is licensed to @Ruthie-FRC.
+Licensing is still in progress.
