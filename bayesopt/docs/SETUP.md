@@ -185,7 +185,7 @@ After successful setup:
 1. **Integrate Java code:** Follow [JAVA_INTEGRATION.md](JAVA_INTEGRATION.md) to add NetworkTables support to your robot
 2. **Configure tuner:** Edit `bayesopt/config/TUNER_TOGGLES.ini` for your preferences
 3. **Learn features:** Read [USER_GUIDE.md](USER_GUIDE.md) for complete documentation
-4. **Start tuning:** See the [Quick Start](#quick-start) section in the main README
+4. **Start tuning:** See the Quick Start section in the main [README](../../README.md)
 
 ## Common Setup Issues
 
@@ -245,9 +245,13 @@ chmod +x START_TUNER.sh
 python3 bayesopt/tuner/main.py
 ```
 
-## Additional Resources
+## See Also
 
-- **Java Integration:** [JAVA_INTEGRATION.md](JAVA_INTEGRATION.md)
-- **User Guide:** [USER_GUIDE.md](USER_GUIDE.md)
-- **Troubleshooting:** [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
-- **Development:** [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md)
+- **User Guide:** [USER_GUIDE.md](USER_GUIDE.md) - Complete feature documentation
+- **Java Integration:** [JAVA_INTEGRATION.md](JAVA_INTEGRATION.md) - Robot code integration
+- **Troubleshooting:** [TROUBLESHOOTING.md](TROUBLESHOOTING.md) - Common problems and solutions
+- **Developer Guide:** [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) - Architecture and development info
+- **Main README:** [README.md](../../README.md) - Project overview
+- **Documentation Index:** //TODO: add link and file path for this one
+  
+  
