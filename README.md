@@ -65,6 +65,8 @@ python run_tests.py
 ```
 All tests should pass ✅
 
+Note: if laptop is not running nt some tests will fail. Working on making a seperate test suite for that.
+
 ## How to Run
 
 ### Starting the Tuner
