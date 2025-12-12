@@ -357,3 +357,11 @@ If you have questions about contributing:
 - Ask in GitHub Discussions
 
 Thank you for contributing to BayesOpt! 🎉
+
+## See Also
+
+- **Developer Guide:** [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) - Architecture and code structure
+- **Documentation Standards:** [DOCUMENTATION_STANDARDS.md](DOCUMENTATION_STANDARDS.md) - Documentation conventions
+- **User Guide:** [USER_GUIDE.md](USER_GUIDE.md) - Complete feature documentation
+- **Setup Guide:** [SETUP.md](SETUP.md) - Installation instructions
+- **Main README:** [README.md](../../README.md) - Project overview

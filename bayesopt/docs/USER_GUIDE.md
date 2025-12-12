@@ -556,8 +556,12 @@ When you backtrack, the system logs a potential interaction between:
 | Same for all coefficients | `force_global = True` |
 | Different per coefficient | `force_global = False`, set overrides |
 
-## Next Steps
+## See Also
 
-- **Troubleshooting:** See [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
-- **Java Integration:** See [JAVA_INTEGRATION.md](JAVA_INTEGRATION.md)
-- **Development:** See [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md)
+- **Setup:** [SETUP.md](SETUP.md) - Installation and setup instructions
+- **Troubleshooting:** [TROUBLESHOOTING.md](TROUBLESHOOTING.md) - Common problems and solutions
+- **Java Integration:** [JAVA_INTEGRATION.md](JAVA_INTEGRATION.md) - How to integrate with robot code
+- **Developer Guide:** [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) - Architecture and development info
+- **Hotkeys:** [HOTKEYS.md](HOTKEYS.md) - Keyboard shortcuts reference
+- **Contributing:** [CONTRIBUTING.md](CONTRIBUTING.md) - How to contribute to the project
+  
