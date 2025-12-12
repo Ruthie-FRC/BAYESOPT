@@ -189,4 +189,4 @@ pip install -r bayesopt/tuner/requirements.txt
 See [LICENSE](LICENSE) file for details.
 
 Some components are from AdvantageKit. If not attributed to them, code is licensed to @Ruthie-FRC.
-Licensing is still in progress. 
+Licensing is still in progress.
