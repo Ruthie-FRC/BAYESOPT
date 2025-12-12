@@ -166,16 +166,24 @@ public class FiringSolver extends SubsystemBase {
     double yaw = 0.0; // Simplified, for 2D shot; extend for full 3D as needed.
 
     // === Iterative velocity calculation (adapts SideKick logic) ===
+    // Pre-compute constants outside the loop for better performance
+    final double dragConstant = 0.5 * airDensity * dragCoeff * projectileArea / projectileMass;
+    final double halfGravity = 0.5 * GRAVITY;
+    final double minVelocity = 2.0;
+    final double errorDamping = 0.5;
+    
     double v0 = 10.0;
     int vIters = (int) Math.max(1, velocityIterations);
     for (int i = 0; i < vIters; i++) {
-      double dragAccel =
-          0.5 * airDensity * dragCoeff * projectileArea * v0 * v0 / projectileMass;
+      double v0Squared = v0 * v0;
+      double dragAccel = dragConstant * v0Squared;
       double t = distanceMeters / Math.max(1e-5, v0);
-      double estDrop = 0.5 * GRAVITY * t * t + 0.5 * dragAccel * t * t;
+      double tSquared = t * t;
+      double estDrop = halfGravity * tSquared + 0.5 * dragAccel * tSquared;
       double error = estDrop - heightDiff;
-      v0 -= error * 0.5;
-      v0 = Math.max(2.0, Math.min(maxExitVelocity, v0));
+      v0 -= error * errorDamping;
+      // Clamp velocity to valid range
+      v0 = Math.max(minVelocity, Math.min(maxExitVelocity, v0));
       if (Math.abs(error) < velocityTolerance) break;
     }
 
@@ -185,19 +193,22 @@ public class FiringSolver extends SubsystemBase {
     for (int i = 0; i < aIters; i++) {
       double sin = Math.sin(pitch);
       double cos = Math.cos(pitch);
-      double t = distanceMeters / Math.max(1e-5, (v0 * cos));
-      double y = v0 * sin * t - 0.5 * GRAVITY * t * t - heightDiff;
-      double dyda = v0 * cos * t + 1e-6; // prevent zero division
+      double vCos = v0 * cos;
+      double t = distanceMeters / Math.max(1e-5, vCos);
+      double tSquared = t * t;
+      double y = v0 * sin * t - halfGravity * tSquared - heightDiff;
+      double dyda = vCos * t + 1e-6; // prevent zero division
       pitch -= y / dyda;
       if (Math.abs(y) < angleTolerance) break;
     }
     pitch += gravityComp; // add gravity compensation offset
 
     // === Record solution ===
-    Logger.recordOutput("FiringSolver/SolutionIterative",
-        new FiringSolution(pitch, v0, yaw));
+    // Create solution object once to avoid redundant allocation
+    FiringSolution solution = new FiringSolution(pitch, v0, yaw);
+    Logger.recordOutput("FiringSolver/SolutionIterative", solution);
 
-    return new FiringSolution(pitch, v0, yaw);
+    return solution;
   }
 
   @Override

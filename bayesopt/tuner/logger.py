@@ -41,6 +41,10 @@ class TunerLogger:
         self.csv_writer = None
         self.session_start_time = datetime.now()
         
+        # Buffering for improved performance
+        self._write_counter = 0
+        self._flush_interval = 5  # Flush every N writes instead of every write
+        
         # Create log directory if it doesn't exist
         self.log_directory.mkdir(parents=True, exist_ok=True)
         
@@ -130,8 +134,10 @@ class TunerLogger:
             current_time = datetime.now()
             session_time = (current_time - self.session_start_time).total_seconds()
             
-            # Format all coefficients as JSON-like string
-            coeff_str = "; ".join([f"{k}={v:.6f}" for k, v in all_coefficient_values.items()])
+            # Format all coefficients as string using efficient join
+            # Pre-build list instead of repeated string concatenation
+            coeff_parts = [f"{k}={v:.6f}" for k, v in all_coefficient_values.items()]
+            coeff_str = "; ".join(coeff_parts)
             
             # Create row with ALL captured data
             row = [
@@ -159,7 +165,12 @@ class TunerLogger:
             ]
             
             self.csv_writer.writerow(row)
-            self._file_handle.flush()  # Ensure data is written immediately
+            
+            # Buffered flush: only flush every N writes for better performance
+            self._write_counter += 1
+            if self._write_counter >= self._flush_interval:
+                self._file_handle.flush()
+                self._write_counter = 0
             
             logger.debug(f"Logged shot: {coefficient_name}={coefficient_value:.6f}, hit={shot_data.hit if shot_data else 'N/A'}")
             
@@ -221,6 +232,8 @@ class TunerLogger:
         """Close the log file."""
         try:
             if hasattr(self, '_file_handle') and self._file_handle:
+                # Ensure any buffered data is flushed before closing
+                self._file_handle.flush()
                 self._file_handle.close()
                 logger.info(f"Closed log file: {self.csv_file}")
         except Exception as e:

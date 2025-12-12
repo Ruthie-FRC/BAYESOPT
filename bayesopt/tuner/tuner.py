@@ -219,6 +219,8 @@ class BayesianTunerCoordinator:
         update_period = 1.0 / self.config.TUNER_UPDATE_RATE_HZ
         
         while self.running:
+            loop_start_time = time.time()
+            
             try:
                 # Check for runtime enable/disable toggle from dashboard
                 self._check_runtime_toggle()
@@ -269,8 +271,11 @@ class BayesianTunerCoordinator:
                 # Update status on dashboard
                 self._update_status()
                 
-                # Sleep until next update
-                time.sleep(update_period)
+                # Adaptive sleep: subtract elapsed time from update period
+                # This maintains consistent update rate regardless of processing time
+                elapsed = time.time() - loop_start_time
+                sleep_time = max(0.01, update_period - elapsed)  # Minimum 10ms sleep
+                time.sleep(sleep_time)
                 
             except Exception as e:
                 logger.error(f"Error in tuning loop: {e}", exc_info=True)
@@ -353,10 +358,10 @@ class BayesianTunerCoordinator:
         logger.info(f"Accumulating shot: hit={shot_data.hit}, distance={shot_data.distance:.2f}m")
         
         # Store shot with current coefficient values
-        # We need to copy the dict so changes don't affect stored data
+        # Use dict() constructor for more efficient shallow copy
         self.accumulated_shots.append({
             'shot_data': shot_data,
-            'coefficient_values': self.current_coefficient_values.copy()
+            'coefficient_values': dict(self.current_coefficient_values)
         })
         
         # Log to CSV for offline analysis
