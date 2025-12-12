@@ -129,3 +129,12 @@ Driver Station Laptop              Robot (RoboRIO)
 - All communication happens through NetworkTables at `/Tuning/Coefficients/`
 - Coefficient updates are immediate - LoggedTunableNumber picks them up automatically
 - Uses NetworkTables 4 pub/sub API for better performance
+
+## See Also
+
+- **Java Integration Guide:** [../bayesopt/docs/JAVA_INTEGRATION.md](../bayesopt/docs/JAVA_INTEGRATION.md) - Detailed integration instructions
+- **User Guide:** [../bayesopt/docs/USER_GUIDE.md](../bayesopt/docs/USER_GUIDE.md) - Complete tuner documentation
+- **Setup Guide:** [../bayesopt/docs/SETUP.md](../bayesopt/docs/SETUP.md) - Installation instructions
+- **Main README:** [../README.md](../README.md) - Project overview
+- **Documentation Index:** //TODO: add link later
+  
