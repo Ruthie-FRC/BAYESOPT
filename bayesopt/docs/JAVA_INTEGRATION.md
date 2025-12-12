@@ -333,6 +333,14 @@ public class FiringSolver extends SubsystemBase {
 - Check that you're using the operating values (not Constants) in calculations
 - Verify the tuner is connected and running optimization
 
+## See Also
+
+- **Java Integration Files:** [java-integration/README.md](../../java-integration/README.md) - Java file documentation
+- **User Guide:** [USER_GUIDE.md](USER_GUIDE.md) - Complete tuner documentation
+- **Setup Guide:** [SETUP.md](SETUP.md) - Installation instructions
+- **Troubleshooting:** [TROUBLESHOOTING.md](TROUBLESHOOTING.md) - Common problems and solutions
+- **Developer Guide:** [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) - Architecture and code structure
+
 ### "Dashboard controls missing"
 - The controls appear at `/Tuning/BayesianTuner/`
 - They only appear when the Python tuner is running

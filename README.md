@@ -65,7 +65,7 @@ python run_tests.py
 ```
 All tests should pass ✅
 
-Note: if laptop is not running nt some tests will fail. Working on making a seperate test suite for that.
+**Note:** If laptop is not running NetworkTables, some tests will fail. Working on making a separate test suite for that.
 
 ## How to Run
 
@@ -124,7 +124,7 @@ auto_advance_shot_threshold = 10
 
 ### 📚 Complete Guides
 
-| Document | When to use it |
+| Document | When to Use It |
 |----------|----------------|
 | **[SETUP.md](bayesopt/docs/SETUP.md)** | Detailed setup instructions for all platforms |
 | **[USER_GUIDE.md](bayesopt/docs/USER_GUIDE.md)** | Complete feature guide, dashboard controls, configuration |
@@ -135,9 +135,11 @@ auto_advance_shot_threshold = 10
 
 ### 📂 Quick References
 
-- **Java integration files:** See `java-integration/` folder
+- **Java integration files:** See `java-integration/` folder and [README](java-integration/README.md)
 - **Configuration examples:** See `bayesopt/config/` folder
+- **Test suite documentation:** See [README_TESTS.md](bayesopt/tuner/tests/README_TESTS.md)
 - **Contributing:** See [CONTRIBUTING.md](bayesopt/docs/CONTRIBUTING.md)
+- **Documentation standards:** See [DOCUMENTATION_STANDARDS.md](bayesopt/docs/DOCUMENTATION_STANDARDS.md)
 
 ## Key Features
 
@@ -183,5 +185,5 @@ pip install -r bayesopt/tuner/requirements.txt
 
 See [LICENSE](LICENSE) file for details.
 
-Some stuff is from advantagekit, if not attributed to them it is liscensed to @Ruthie-FRC
-Liscenising is still in progress 
+Some components are from AdvantageKit. If not attributed to them, code is licensed to @Ruthie-FRC.
+Licensing is still in progress. 
