@@ -507,6 +507,8 @@ class BayesianTunerCoordinator:
         hits = sum(1 for s in self.accumulated_shots if s['shot_data'].hit)
         total = len(self.accumulated_shots)
         
+        # Guard against edge case: even though we checked threshold above,
+        # defensive programming dictates we verify total > 0 before comparison
         if hits == total and total > 0:
             logger.info(f"Auto-advance triggered: 100% success rate ({hits}/{total} hits) over threshold of {auto_advance_threshold}")
             self.data_logger.log_event('AUTO_ADVANCE', f'100% success rate over {auto_advance_threshold} shots, advancing to next coefficient')
@@ -1093,3 +1095,4 @@ def run_tuner(server_ip: Optional[str] = None, config: Optional[TunerConfig] = N
                         except Exception:
                             # Best-effort cleanup: ignore errors if hotkey was not registered or already removed
                             pass
+                            

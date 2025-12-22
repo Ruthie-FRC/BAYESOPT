@@ -1,6 +1,9 @@
 # BAYESOPT - Bayesian Optimization Tuner for FRC Robots
 
+## NOTE: THIS IS CURRENTLY OUT OF DATE! DONT TRUST THIS! MAJOR OVERHAULS COMING SOON! FOR THE CODE AND DOCS!
+
 A comprehensive tuning system using Bayesian optimization to automatically tune shooting coefficients on FRC robots.
+
 
 ## Table of Contents
 
