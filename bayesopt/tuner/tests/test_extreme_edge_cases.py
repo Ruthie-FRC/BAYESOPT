@@ -304,7 +304,8 @@ class TestSystemResourceLimits(unittest.TestCase):
             for logger in loggers:
                 try:
                     logger.close()
-                except:
+                except (OSError, IOError, AttributeError):
+                    # Ignore errors during cleanup - logger may be in invalid state
                     pass
     
     def test_very_large_tuning_order_list(self):
@@ -332,8 +333,8 @@ class TestPlatformSpecificEdgeCases(unittest.TestCase):
         try:
             config.LOG_DIRECTORY = windows_path
             self.assertEqual(config.LOG_DIRECTORY, windows_path)
-        except:
-            # May fail on non-Windows
+        except (OSError, ValueError, AttributeError):
+            # May fail on non-Windows platforms due to path format differences
             pass
     
     def test_unix_path_with_spaces(self):
