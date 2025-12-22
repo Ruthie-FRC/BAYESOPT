@@ -46,6 +46,13 @@ else:
 logger = logging.getLogger(__name__)
 
 
+# Optimization scoring constants
+SCORE_HIT = 1.0  # Score bonus for successful shot
+SCORE_MISS = -1.0  # Score penalty for missed shot
+DISTANCE_BONUS_WEIGHT = 0.01  # Weight for distance-based score adjustment
+CONVERGENCE_VARIANCE_THRESHOLD = 0.01  # Variance threshold for convergence detection
+
+
 class BayesianOptimizer:
     """
     Bayesian optimizer for a single coefficient.
@@ -139,15 +146,14 @@ class BayesianOptimizer:
         """
         try:
             # Convert hit/miss to optimization score (maximize hit rate)
-            # Score is 1.0 for hit, -1.0 for miss
-            score = 1.0 if hit else -1.0
+            score = SCORE_HIT if hit else SCORE_MISS
             
             # Add small bonus for being closer to target if distance data available
             if additional_data and 'distance' in additional_data:
                 # Smaller distances are slightly better (secondary objective)
                 distance = additional_data.get('distance', 0)
                 if distance > 0:
-                    distance_bonus = -0.01 / max(distance, 1.0)  # Small negative bonus
+                    distance_bonus = -DISTANCE_BONUS_WEIGHT / max(distance, 1.0)
                     score += distance_bonus
             
             # Tell optimizer the result
@@ -201,7 +207,7 @@ class BayesianOptimizer:
             variance = np.var(recent_scores)
             
             # If variance is very low, we've converged
-            if variance < 0.01:
+            if variance < CONVERGENCE_VARIANCE_THRESHOLD:
                 logger.info(f"{self.coeff_config.name} converged (low variance: {variance:.6f})")
                 return True
         
@@ -462,3 +468,4 @@ class CoefficientTuner:
         step_size = self.current_optimizer.current_step_size
         
         return f"Tuning {coeff_name} (iter {iteration}, step {step_size:.6f})"
+        

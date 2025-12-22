@@ -56,6 +56,9 @@ class TunerLogger:
         filename = f"{self.config.LOG_FILENAME_PREFIX}_{timestamp}.csv"
         self.csv_file = self.log_directory / filename
         
+        # Initialize file handle to None in case of early failure
+        self._file_handle = None
+        
         # Create CSV file with headers
         try:
             file_handle = open(self.csv_file, 'w', newline='')
@@ -95,6 +98,8 @@ class TunerLogger:
         except Exception as e:
             logger.error(f"Failed to create CSV log: {e}")
             self.csv_writer = None
+            # Ensure file handle is None if initialization failed
+            self._file_handle = None
     
     def log_shot(
         self,
@@ -222,9 +227,27 @@ class TunerLogger:
         try:
             if hasattr(self, '_file_handle') and self._file_handle:
                 self._file_handle.close()
+                self._file_handle = None  # Mark as closed to prevent double-close
                 logger.info(f"Closed log file: {self.csv_file}")
         except Exception as e:
             logger.error(f"Error closing log file: {e}")
+    
+    def __enter__(self):
+        """Context manager entry."""
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit - ensures file is closed."""
+        self.close()
+        return False  # Don't suppress exceptions
+    
+    def __del__(self):
+        """Destructor to ensure file is closed as a last resort."""
+        try:
+            self.close()
+        except Exception:
+            # Silently ignore errors during cleanup
+            pass
     
     def get_log_file_path(self) -> Optional[Path]:
         """
@@ -392,3 +415,4 @@ def setup_logging(config, log_level=logging.INFO):
     
     logger.info("Logging configured")
     return logger
+    

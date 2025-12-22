@@ -385,5 +385,11 @@ class TunerConfig:
         if self.TUNER_UPDATE_RATE_HZ <= 0:
             warnings.append("TUNER_UPDATE_RATE_HZ must be positive")
         
+        # Validate rate limiting parameters to prevent division by zero
+        if self.MAX_NT_WRITE_RATE_HZ <= 0:
+            warnings.append("MAX_NT_WRITE_RATE_HZ must be positive")
+        
+        if self.MAX_NT_READ_RATE_HZ <= 0:
+            warnings.append("MAX_NT_READ_RATE_HZ must be positive")
+        
         return warnings
-
