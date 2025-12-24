@@ -1157,7 +1157,7 @@ def create_graphs_view():
                     {'label': 'Optimization Progress by Coefficient', 'value': 'optimization_progress'},
                     {'label': 'Shot Distribution Analysis', 'value': 'shot_distribution'},
                     {'label': 'Algorithm Performance Comparison (Advanced)', 'value': 'algorithm_comparison'},
-                    {'label': '📉 Convergence Plot (Advanced)', 'value': 'convergence'},
+                    {'label': 'Convergence Plot (Advanced)', 'value': 'convergence'},
                     {'label': 'Heat Map - Distance vs Angle', 'value': 'heatmap'},
                     {'label': 'Shot Velocity Distribution', 'value': 'velocity_dist'},
                 ],
@@ -1316,7 +1316,7 @@ def create_graphs_view():
             
             # Algorithm Performance Comparison (Advanced only)
             html.Div(id='graph-algorithm-comparison', className="card", style={'display': 'none'}, children=[
-                html.Div("🧠 Algorithm Performance Comparison", className="card-header"),
+                html.Div("Algorithm Performance Comparison", className="card-header"),
                 dcc.Graph(
                     id='chart-algorithm-comparison',
                     figure=go.Figure(
@@ -1340,7 +1340,7 @@ def create_graphs_view():
             
             # Convergence Plot (Advanced only)
             html.Div(id='graph-convergence', className="card", style={'display': 'none'}, children=[
-                html.Div("📉 Convergence Plot", className="card-header"),
+                html.Div("Convergence Plot", className="card-header"),
                 dcc.Graph(
                     id='chart-convergence',
                     figure=go.Figure(
@@ -1372,7 +1372,7 @@ def create_graphs_view():
             
             # Heat Map
             html.Div(id='graph-heatmap', className="card", style={'display': 'none'}, children=[
-                html.Div("🔥 Heat Map - Distance vs Angle Success Rate", className="card-header"),
+                html.Div("Heat Map - Distance vs Angle Success Rate", className="card-header"),
                 dcc.Graph(
                     id='chart-heatmap',
                     figure=go.Figure(
