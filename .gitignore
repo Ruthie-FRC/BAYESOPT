@@ -109,6 +109,8 @@ Temporary Items
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
+!.vscode/terminal_init.sh
+!.vscode/terminal_init.ps1
 
 ### Windows ###
 # Windows thumbnail cache files
