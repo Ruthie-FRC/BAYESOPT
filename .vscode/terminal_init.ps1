@@ -4,7 +4,12 @@
 
 $bayesoptRoot = $PSScriptRoot | Split-Path -Parent
 $venvPath = Join-Path $bayesoptRoot ".venv"
+
+# Check for Windows-style activation script first, then Unix-style
 $venvActivate = Join-Path $venvPath "Scripts\Activate.ps1"
+if (-not (Test-Path $venvActivate)) {
+    $venvActivate = Join-Path $venvPath "bin/Activate.ps1"
+}
 
 # Check if virtual environment exists
 if (Test-Path $venvActivate) {
