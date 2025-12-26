@@ -8,7 +8,7 @@ $venvPath = Join-Path $bayesoptRoot ".venv"
 # Check for Windows-style activation script first, then Unix-style
 $venvActivate = Join-Path $venvPath "Scripts\Activate.ps1"
 if (-not (Test-Path $venvActivate)) {
-    $venvActivate = Join-Path $venvPath "bin/Activate.ps1"
+    $venvActivate = Join-Path $venvPath "bin" "Activate.ps1"
 }
 
 # Check if virtual environment exists
@@ -17,5 +17,5 @@ if (Test-Path $venvActivate) {
     & $venvActivate
     Write-Host "✓ Virtual environment activated (.venv)" -ForegroundColor Green
 } else {
-    Write-Host "ℹ Virtual environment not found. Run START.bat to create it." -ForegroundColor Yellow
+    Write-Host "ℹ Virtual environment not found. Run START.bat or START.sh to create it." -ForegroundColor Yellow
 }

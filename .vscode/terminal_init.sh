@@ -23,5 +23,5 @@ if [[ -f "$venv_activate" ]]; then
     source "$venv_activate"
     echo "✓ Virtual environment activated (.venv)"
 else
-    echo "ℹ Virtual environment not found. Run START.sh to create it."
+    echo "ℹ Virtual environment not found. Run START.sh or START.bat to create it."
 fi
